@@ -18,33 +18,33 @@ To change a decision, change this file first. Then update the documents that ref
 - **Message class:** the default export of a message file.
 - **Handler class:** the default export of a handler file.
 - **Pair:** a message file and its handler file.
-- **Key:** the file path of a message file without `.js`, as the glob output supplies it. An example is `./commands/billing/ChargeCard`.
+- **Key:** the file path of a message file without `.js`, as the glob output supplies it. An example is `./commands/billing/ChargeCard`. **(detail)** With an array, two glob outputs can supply the same key.
 - **Plain object:** an object whose prototype is `Object.prototype` or `null`.
 - **Array:** a value for which `Array.isArray()` returns `true`.
 - **Error text:** the `message` property of an error.
 
 ## Scope
 
-- **D-01** Version 1 contains only `configure()`, `command()`, `query()` and `CqrsError`. It has no middleware, no events and no Cloudflare Queues support.
-- **D-02** The package exports exactly four names: `configure`, `command`, `query` and `CqrsError`.
+- **D-01** Version 1 contains only `zeg()`, `command()`, `query()` and `ZegError`. It has no middleware, no events and no Cloudflare Queues support.
+- **D-02** The package exports exactly four names: `zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export.
 - **D-03** The library code imports no modules. It uses only standard JavaScript. **(detail)** As a result, it imports no `node:*` module and no `cloudflare:*` module.
 
 ## API model
 
-- **D-04** The API has global functions. The project calls `configure()` one time, in its Worker entry file, for example `src/index.js`. Each other file that dispatches a message imports `command` or `query` from `'@otar/zeg'`.
+- **D-04** The API has global functions. The project calls the setup function `zeg()` one time, in its Worker entry file, for example `src/index.js`. Each other file that dispatches a message imports `command` or `query` from `'@otar/zeg'`.
 - **D-05** The library keeps the handlers in a hidden module-level registry. As a result, each isolate has one registry. The package has no bus object and no `reset()` function.
 
 ## Build and discovery
 
 - **D-06** A project that uses zeg must build with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
-- **D-07** The project finds its message files and handler files with the eager form of `import.meta.glob`, that is `{ eager: true }`. The project writes one glob for each kind in its call to `configure()`. Each glob must find the message files and the handler files of its kind. **(detail)** Vite requires that each glob pattern is a string literal in the source file.
+- **D-07** The project finds its message files and handler files with the eager form of `import.meta.glob`, that is `{ eager: true }`. The project gives the glob outputs of each kind to `zeg()`. Each glob must find the message files and the handler files of its kind. **(detail)** Vite requires that each glob pattern is a string literal in the source file.
 - **D-08** The library does not use class names. Message classes and handler classes can be anonymous or named. A project does not need the `keepNames` setting.
 
 ## Files and pairs
 
-- **D-09** The glob in the `commands` option supplies the command files. The glob in the `queries` option supplies the query files.
+- **D-09** The `commands` option supplies the command files, and the `queries` option supplies the query files. Each option is a glob output or an array of glob outputs. One glob can have several patterns, so one glob can find files in several folders. **(detail)** An empty array is valid.
 - **D-10** Each file in a glob output must be part of a pair.
-- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders.
+- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output.
 - **D-12** Files with the same name in different folders form different pairs. For example, `./commands/billing/Charge.js` and `./commands/shop/Charge.js` are valid together.
 - **D-13** Each message file and each handler file has a default export. **(detail)** The library reads only the default export. It ignores other exports.
 - **D-14** If a command folder or a query folder contains helper files, the project excludes them with a negative glob pattern. An example is `'!**/_*.js'`.
@@ -58,9 +58,9 @@ To change a decision, change this file first. Then update the documents that ref
 ## Handlers
 
 - **D-18** A handler class has an instance method `handle(message)`. The method gets exactly one argument. **(detail)** It can be sync or async.
-- **D-19** `configure()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
-- **D-20** **(detail)** `configure()` checks each message class. The class must be a function whose `prototype` is an object.
-- **D-21** The library creates a new handler instance for each dispatch, with `new HandlerClass()` and no arguments. **(detail)** The library creates the instance before deep freeze starts.
+- **D-19** `zeg()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
+- **D-20** **(detail)** `zeg()` checks each message class. The class must be a function whose `prototype` is an object.
+- **D-21** The library creates a new handler instance for each dispatch, with `new HandlerClass()` and no arguments.
 - **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message.
 - **D-23** A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'`.
 - **D-24** The library has no guard against recursive dispatch.
@@ -72,31 +72,27 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-27** These values are not valid messages: `null`, primitives, **(detail)** functions, arrays and plain objects. Instances of anonymous classes are valid.
 - **D-28** A subclass is a different class. It needs its own pair. The library does not use the handler of the parent class.
 
-## Deep freeze
+## The message object
 
-- **D-29** The library deep-freezes the message immediately before `handle()` runs. It freezes the message itself. Then it walks nested plain objects and nested arrays and freezes them.
-- **D-30** Deep freeze does not change other nested objects, and it does not walk them. Examples are class instances, `Map`, `Set`, `Date`, typed arrays, `Request` and streams.
-- **D-31** Deep freeze walks properties whose names are strings or symbols. It also walks properties that are not enumerable. It reads only data properties and does not call getters. It walks each object one time, so circular references do not cause an infinite loop. It also walks objects that are already frozen.
-- **D-32** Deep freeze applies to `command()` and to `query()`. **(detail)** If the dispatch stops before deep freeze starts, the message does not change.
-- **D-33** **(detail)** If `Object.freeze` throws during deep freeze, the Promise rejects with that error, and `handle()` does not run. The objects that the library froze before the error stay frozen.
-- **D-34** The caller's message object stays frozen after the dispatch.
+- **D-29** The library gives the message to the handler as it is. It does not freeze, copy or change the message. If a message must not change, its message class can freeze the message in the constructor, for example with `Object.freeze(this)`.
+- **D-30 to D-34** Revision 3 removed these decisions. They described the deep freeze.
 
-## configure()
+## zeg()
 
-- **D-35** Each call to `configure()` replaces all handlers. The options `commands` and `queries` are both optional. **(detail)** An option with the value `undefined` is the same as a missing option.
-- **D-36** `configure({})` is valid. It creates an empty registry.
-- **D-37** `configure()` throws a `CqrsError` with the code `INVALID_CONFIG` in these cases:
+- **D-35** Each call to `zeg()` replaces all handlers. The options `commands` and `queries` are both optional. **(detail)** An option with the value `undefined` is the same as a missing option.
+- **D-36** `zeg({})` is valid. It creates an empty registry.
+- **D-37** `zeg()` throws a `ZegError` with the code `INVALID_CONFIG` in these cases:
   - **(detail)** The argument is not a plain object.
   - The argument has a property other than `commands` and `queries`.
-  - **(detail)** The value of `commands` or `queries` is not a plain object.
+  - **(detail)** The value of `commands` or `queries` is not a plain object and not an array. An entry of such an array is not a plain object.
   - **(detail)** A value in a glob output is not an object. For example, a lazy glob supplies functions, which are not valid.
   - **(detail)** A file path in a glob output does not end in `.js`.
   - A file has no default export.
-  - A message file has no handler file in its folder, or a handler file has no message file in its folder. This includes a helper file that no negative pattern excludes. **(detail)** It also includes a handler file with the name `Handler.js` only.
+  - A message file has no handler file in its folder in the same glob output, or a handler file has no message file in its folder in the same glob output. This includes a helper file that no negative pattern excludes. **(detail)** It also includes a handler file with the name `Handler.js` only.
   - A message class does not pass the check in D-20, or a handler class does not pass the check in D-19.
-  - **(detail)** Two message files have the same class as their default export, in one kind or in both kinds. Two message classes with the same `prototype` object are also not valid.
-- **D-38** `configure()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
-- **D-39** `configure()` checks all options before it changes the registry. If `configure()` throws, the registry does not change, and the handlers from the previous call stay active.
+  - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
+- **D-38** `zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
+- **D-39** `zeg()` checks all options before it changes the registry. If `zeg()` throws, the registry does not change, and the handlers from the previous call stay active.
 - **D-40** **(detail)** Two handler files can have the same handler class as their default export.
 
 ## Dispatch
@@ -106,16 +102,16 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-43** `query()` resolves to the value that the handler returns, after `await`. `null` is a valid value.
 - **D-44** If the value from a query handler is `undefined` after `await`, the Promise rejects with the code `UNDEFINED_RESULT`.
 - **D-45** If the message is not valid (D-27), the Promise rejects with a `TypeError`.
-- **D-46** Until a call to `configure()` returns without an error, the Promise rejects with the code `NOT_CONFIGURED`.
+- **D-46** Until a call to `zeg()` returns without an error, the Promise rejects with the code `NOT_CONFIGURED`.
 - **D-47** If the class of the message is not a message class of the correct kind, the Promise rejects with the code `HANDLER_NOT_FOUND`. This includes a class that no glob found and a message of the other kind.
-- **D-48** If the message is a message of the other kind, the error text tells the caller to use the other function. **(detail)** The error text names the message file by its key.
+- **D-48** If the message is a message of the other kind, the error text tells the caller to use the other function. **(detail)** The error text names the message file by its key. If the option is an array, the error text also names the position of the glob output in the array, for example `commands[1]`.
 - **D-49** If `new HandlerClass()` or `handle()` throws, or if the Promise of `handle()` rejects, the Promise of the dispatch rejects with the same error object. The library does not wrap or change this error.
 
 ## Errors
 
-- **D-50** The library uses one error class, `CqrsError`. **(detail)** It extends `Error`.
-- **D-51** The constructor is public: `new CqrsError(code, message)`. It sets `code` and `message`. It does not check the code. The `name` property is always `'CqrsError'`.
-- **D-52** A `CqrsError` has the properties `name`, `code` and `message`. zeg adds no other properties. **(detail)** The `stack` property that the JavaScript engine adds is not part of this rule.
+- **D-50** The library uses one error class, `ZegError`. **(detail)** It extends `Error`.
+- **D-51** The constructor is public: `new ZegError(code, message)`. It sets `code` and `message`. It does not check the code. The `name` property is always `'ZegError'`.
+- **D-52** A `ZegError` has the properties `name`, `code` and `message`. zeg adds no other properties. **(detail)** The `stack` property that the JavaScript engine adds is not part of this rule.
 - **D-53** The codes are `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and `UNDEFINED_RESULT`.
 - **D-54** The class and the code are the API. The error text can change in any version.
 
@@ -157,14 +153,17 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 5. Class names are not reliable. For `export default class {}`, the name is `__vite_ssr_export_default__` in `vite dev` and Vitest, and `RegisterUser_default` in a Vite build.
 6. In a minified build, class names have one letter, and a message class and its handler class can get the same letter. In Node without a bundler, the name is `default`.
 7. With eager globs, the Vite build has one chunk and no warnings. All message files and handler files run when the isolate starts.
-8. If `configure()` throws at startup, `vite dev` does not start, and workerd does not start the Worker.
+8. If `zeg()` throws at startup, `vite dev` does not start, and workerd does not start the Worker.
 9. A handler that imports `command` from the library causes no error at startup.
 10. `import { env, waitUntil } from 'cloudflare:workers'` works with the compatibility date `2026-09-01` and no flags.
 11. Workers use one isolate for many requests, also for concurrent requests. Module-level state stays from one request to the next.
 12. Vitest with `@cloudflare/vitest-plugin` gives each test file a new module state. The tests in one file share the module state.
 13. `@cloudflare/vitest-plugin` adds an import of the Worker entry file to the module `cloudflare:test`. As a result, the entry file runs when a test file or a setup file imports `cloudflare:test`. If no file imports `cloudflare:test`, the entry file runs at the first `exports.default.fetch()` in a test file.
 14. `vi.resetModules()` in Vitest creates new class objects and a new instance of zeg. After a reset, a class from an earlier import is not equal to the class from a new import.
-15. `Object.freeze` throws a `TypeError` on a typed array that has elements. It also throws on a module namespace object.
+15. Revision 3 removed this fact. It described `Object.freeze` errors for typed arrays and module namespace objects.
+16. One `import.meta.glob` call accepts an array of patterns, including negative patterns. As a result, one glob can find files in several folders.
+17. Each glob supplies file paths relative to the file that contains it. As a result, two globs in different files can supply the same file path. If a project merges them with `{ ...a, ...b }`, the merge loses entries, and no error occurs. In the lab, 6 files became 4 entries.
+18. The deep freeze of revision 2 needed 22 ms for a message with an array of 10,000 plain objects. This test ran in Node 22, which uses V8, the same engine as workerd. The Workers Free plan allows 10 ms of CPU time for each request. The deep-freeze code of the lab prototype was 128 bytes after minify and gzip.
 
 ## History
 
@@ -174,3 +173,8 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - New or changed: the terms, D-07 to D-17, D-19 to D-21, D-25 to D-28, D-35, D-37, D-38, D-40, D-47 to D-49, D-53, D-61 and D-66.
   - Removed rules of revision 1: the named export, the TypeError for anonymous classes, the `keepNames` setting and its hint, the path rule for `Handler.js` only, the error for the same file name in two folders, the lazy load with its retry rule, the rule for errors from a lazy load and the code `INVALID_HANDLER`. The rule for the same message name in both kinds became the rule for the same class in D-37.
   - The background facts 3 to 9 changed for eager globs and class identity. Revision 2 corrected fact 13 and added fact 14.
+- **Revision 3** (the next commit after `1e7eec6`): the user asked for three improvements.
+  - The setup function `configure()` became `zeg()`, and the error class `CqrsError` became `ZegError`. The new names are specific to zeg. This changed D-01, D-02, D-04, D-07, D-19, D-20, D-35 to D-39, D-46, D-50 to D-52 and background fact 8.
+  - Each option accepts a glob output or an array of glob outputs. This changed D-07, D-09, D-11, D-37, D-48 and the term Key.
+  - The library no longer freezes the message (D-29). Revision 3 removed D-30 to D-34 and the deep-freeze detail of D-21. Deep freeze also froze nested objects that other code can share with the caller. It also cost CPU time and code size (background fact 18).
+  - Revision 3 kept all other IDs. It removed background fact 15 and added facts 16 to 18.
