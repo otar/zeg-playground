@@ -1,0 +1,18 @@
+{
+  "name": "@otar/zeg",
+  "version": "0.1.0",
+  "description": "A small CQRS library for Cloudflare Workers",
+  "keywords": ["cqrs", "command", "query", "cloudflare", "workers", "vite"],
+  "license": "MIT",
+  "author": "Otar Chekurishvili",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otar/zeg-playground.git"
+  },
+  "type": "module",
+  "exports": "./src/index.js",
+  "files": ["src"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "users-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && wrangler deploy",
+    "migrate": "wrangler d1 migrations apply users --local"
+  },
+  "dependencies": {
+    "@otar/zeg": "file:../.."
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.60.2",
+    "vite": "^8.3.1",
+    "wrangler": "^4.141.0"
+  }
+}
