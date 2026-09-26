@@ -136,7 +136,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Tests (phase 4)
 
-- **D-68** The tests run with Vitest 4.1 and `@cloudflare/vitest-plugin`, in workerd.
+- **D-68** The unit tests run with Vitest 4.1 and `@cloudflare/vitest-plugin`, in workerd. **(detail)** The build tests and the static checks run in Node, because they start processes and read files.
 - **D-69** A production build test runs `vite build` on `examples/basic-worker/`. It then sends HTTP requests to the built Worker in local workerd.
 - **D-70** Istanbul measures the coverage of `src/index.js`. Lines, branches, functions and statements must all have 100% coverage.
 - **D-71** The size of `src/index.js` after `esbuild --minify --format=esm` and `gzip -9` must be 1536 bytes or less.
@@ -178,3 +178,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - Each option accepts a glob output or an array of glob outputs. This changed D-07, D-09, D-11, D-37, D-48 and the term Key.
   - The library no longer freezes the message (D-29). Revision 3 removed D-30 to D-34 and the deep-freeze detail of D-21. Deep freeze also froze nested objects that other code can share with the caller. It also cost CPU time and code size (background fact 18).
   - Revision 3 kept all other IDs. It removed background fact 15 and added facts 16 to 18.
+- **Revision 4** (phase 2): the spec showed that a build test cannot run in workerd, because it starts `vite` processes. Revision 4 limited D-68 to the unit tests. The build tests and the static checks run in Node. All IDs stay the same.
