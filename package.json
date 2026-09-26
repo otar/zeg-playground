@@ -2,7 +2,14 @@
   "name": "@otar/zeg",
   "version": "0.1.0",
   "description": "A small CQRS library for Cloudflare Workers",
-  "keywords": ["cqrs", "command", "query", "cloudflare", "workers", "vite"],
+  "keywords": [
+    "cqrs",
+    "command",
+    "query",
+    "cloudflare",
+    "workers",
+    "vite"
+  ],
   "license": "MIT",
   "author": "Otar Chekurishvili",
   "repository": {
@@ -11,8 +18,24 @@
   },
   "type": "module",
   "exports": "./src/index.js",
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:node": "vitest run --project node",
+    "coverage": "vitest run --project unit --coverage && node scripts/check-coverage.js"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.2.8",
+    "@vitest/coverage-istanbul": "^4.1.11",
+    "@vitest/runner": "^4.1.11",
+    "@vitest/snapshot": "^4.1.11",
+    "esbuild": "^0.28.2",
+    "vitest": "^4.1.11"
   }
 }

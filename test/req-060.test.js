@@ -1,0 +1,57 @@
+// docs/spec.md REQ-060. Its first state needs a module state in which no call to zeg() occurred (section 1.5, rule 5).
+// The tests run in the order of the requirement: first the state without zeg(), then the state after zeg().
+import { beforeEach, describe, expect, it } from 'vitest';
+import { zeg, command, query, ZegError } from '@otar/zeg';
+import { A, Q, cmd, qry, resetCalls } from './spec-fixtures.js';
+import { checkSeen, invalidMessages, seen, settleAndCheck } from './helpers.js';
+
+beforeEach(() => {
+  resetCalls();
+});
+
+// The 4 valid messages of REQ-060, then the 12 values of REQ-061
+const messages = () => [new A(1), new Q(1), new Map(), Object.create(A.prototype), ...invalidMessages()];
+
+async function expectNativePromises() {
+  const outcomes = [];
+  for (const message of messages()) {
+    for (const fn of [command, query]) {
+      let p;
+      expect(() => {
+        p = fn(message);
+      }).not.toThrow();
+      expect(p).toBeInstanceOf(Promise);
+      expect(Object.getPrototypeOf(p)).toBe(Promise.prototype);
+      expect(p.constructor).toBe(Promise);
+      const r = await settleAndCheck(p);
+      outcomes.push(r.ok ? 'ok' : r.error instanceof ZegError ? r.error.code : r.error.constructor.name);
+    }
+  }
+  return outcomes;
+}
+
+describe('REQ-060 command() and query() always return a Promise', () => {
+  it('REQ-060 (state 1) no call to zeg() occurred', async () => {
+    const outcomes = await expectNativePromises();
+    // The 4 valid messages: NOT_CONFIGURED. The 12 invalid values: TypeError.
+    expect(outcomes.slice(0, 8)).toEqual(Array(8).fill('NOT_CONFIGURED'));
+    expect(outcomes.slice(8)).toEqual(Array(24).fill('TypeError'));
+  });
+
+  it('REQ-060 (state 2) after zeg({ commands: cmd, queries: qry })', async () => {
+    expect(zeg({ commands: cmd, queries: qry })).toBeUndefined();
+    const outcomes = await expectNativePromises();
+    expect(outcomes.slice(0, 8)).toEqual([
+      'ok', 'HANDLER_NOT_FOUND', // new A(1)
+      'HANDLER_NOT_FOUND', 'ok', // new Q(1)
+      'HANDLER_NOT_FOUND', 'HANDLER_NOT_FOUND', // new Map()
+      'ok', 'HANDLER_NOT_FOUND', // Object.create(A.prototype)
+    ]);
+    expect(outcomes.slice(8)).toEqual(Array(24).fill('TypeError'));
+  });
+
+  it('REQ-113 the ZegErrors of this file have known codes', () => {
+    expect(seen).toHaveLength(8 + 5);
+    checkSeen(['NOT_CONFIGURED', 'HANDLER_NOT_FOUND']);
+  });
+});

@@ -145,6 +145,18 @@ If the message is `null`, a primitive, a function, an array or a plain object, t
 
 `zeg()` runs when the Worker starts. As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
 
+## Tests
+
+To run the tests of zeg, do these steps in the repository root:
+
+1. Run `npm ci`.
+2. Run `npm test`. This command runs all tests and checks, except the coverage check.
+3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/index.js` is 100%.
+
+The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The build tests and the static checks run in Node. The build tests install the packages of `examples/basic-worker/` in a temporary folder, so they need access to the npm registry. To run only the unit tests, run `npm run test:unit`.
+
+GitHub Actions runs these commands on each push to `main`.
+
 ## Documents
 
 - `docs/decisions.md`: all design decisions
