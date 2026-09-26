@@ -1,20 +1,22 @@
 # zeg: syntax (phase 1)
 
-This document shows how a project uses zeg. It contains the complete API, the rules for names and folders, and the error codes. It contains no implementation. The IDs in brackets, for example [D-10], refer to `docs/decisions.md`.
+This document shows how a project uses zeg. It contains the complete API, the rules for files and pairs, and the error codes. It contains no implementation. The IDs in brackets, for example [D-11], refer to `docs/decisions.md`.
 
 ## 1. What zeg does
 
 zeg dispatches a message to its handler. A message is an instance of a class, for example `RegisterUser`. A command changes state and returns no result. A query reads state and returns a result.
 
-zeg finds the handler from the class name of the message. `RegisterUser` goes to `RegisterUserHandler`. You do not import or register each handler. Vite finds the handler files at build time [D-07].
+Each message class is in its own file. Its handler class is in a second file in the same folder. `RegisterUser.js` and `RegisterUserHandler.js` form a pair [D-11]. You do not import or register each handler. Vite finds the files at build time [D-07].
+
+zeg does not use class names. It finds the handler through the class of the message [D-08, D-16]. For this reason, the classes can be anonymous.
 
 ## 2. Project requirements
 
 - The project builds with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only [D-06].
-- `vite.config.js` must set `keepNames` [D-08].
-- Each handler is a `.js` file, and the file name ends in `Handler.js` [D-31].
+- Each message file and each handler file is a `.js` file with a default export [D-13, D-37].
+- A project does not need the `keepNames` setting [D-08].
 
-The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60 [D-52].
+The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60 [D-59].
 
 ## 3. Example project
 
@@ -32,6 +34,7 @@ src/
     RegisterUserHandler.js
     SendWelcomeEmail.js
     SendWelcomeEmailHandler.js
+    _email.js
     billing/
       ChargeCard.js
       ChargeCardHandler.js
@@ -43,7 +46,7 @@ test/
   users.test.js
 ```
 
-The message files can be in any folder. In this example, each message is next to its handler.
+`_email.js` is a helper file. It is not part of a pair, so the glob excludes it [D-14].
 
 ### 3.1 package.json
 
@@ -82,13 +85,10 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 
 export default defineConfig({
   plugins: [cloudflare()],
-  build: {
-    rolldownOptions: {
-      output: { keepNames: true }, // necessary for zeg [D-08]
-    },
-  },
 });
 ```
+
+zeg needs no other Vite settings [D-06, D-08].
 
 ### 3.3 wrangler.jsonc
 
@@ -112,13 +112,13 @@ CREATE TABLE users (email TEXT PRIMARY KEY);
 
 To create the table in the local database, run `npx wrangler d1 migrations apply users --local`.
 
-### 3.5 Messages
+### 3.5 Message files
 
-A message is a standard JavaScript class. It does not import zeg.
+A message file has a class as its default export. A message file does not need to import zeg.
 
 ```js
 // src/commands/RegisterUser.js
-export class RegisterUser {
+export default class {
   constructor(email) {
     this.email = email;
   }
@@ -127,7 +127,7 @@ export class RegisterUser {
 
 ```js
 // src/commands/SendWelcomeEmail.js
-export class SendWelcomeEmail {
+export default class {
   constructor(email) {
     this.email = email;
   }
@@ -136,7 +136,7 @@ export class SendWelcomeEmail {
 
 ```js
 // src/queries/GetUser.js
-export class GetUser {
+export default class {
   constructor(email) {
     this.email = email;
   }
@@ -147,7 +147,7 @@ A message can check its data in its constructor:
 
 ```js
 // src/commands/billing/ChargeCard.js
-export class ChargeCard {
+export default class {
   constructor(userEmail, amount) {
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new TypeError('amount must be a positive integer');
@@ -158,15 +158,28 @@ export class ChargeCard {
 }
 ```
 
-### 3.6 Handlers
+A class name is optional. zeg ignores it, but stack traces and `console.log` show it [D-08]:
+
+```js
+// also valid
+export default class RegisterUser {
+  constructor(email) {
+    this.email = email;
+  }
+}
+```
+
+### 3.6 Handler files
+
+A handler file has a class as its default export. The name of the handler file is the name of the message file without `.js`, plus `Handler.js`.
 
 ```js
 // src/commands/RegisterUserHandler.js
 import { env } from 'cloudflare:workers';
 import { command } from '@otar/zeg';
-import { SendWelcomeEmail } from './SendWelcomeEmail.js';
+import SendWelcomeEmail from './SendWelcomeEmail.js';
 
-export class RegisterUserHandler {
+export default class {
   async handle(message) {
     await env.DB.prepare('INSERT INTO users (email) VALUES (?)')
       .bind(message.email)
@@ -178,16 +191,25 @@ export class RegisterUserHandler {
 
 ```js
 // src/commands/SendWelcomeEmailHandler.js
-export class SendWelcomeEmailHandler {
+import { welcomeText } from './_email.js';
+
+export default class {
   handle(message) {
-    console.log(`welcome mail to ${message.email}`);
+    console.log(welcomeText(message.email));
   }
 }
 ```
 
 ```js
+// src/commands/_email.js (a helper file, not a message)
+export function welcomeText(email) {
+  return `welcome mail to ${email}`;
+}
+```
+
+```js
 // src/commands/billing/ChargeCardHandler.js
-export class ChargeCardHandler {
+export default class {
   handle(message) {
     console.log(`charge ${message.amount} to ${message.userEmail}`);
   }
@@ -198,7 +220,7 @@ export class ChargeCardHandler {
 // src/queries/GetUserHandler.js
 import { env } from 'cloudflare:workers';
 
-export class GetUserHandler {
+export default class {
   async handle(message) {
     const user = await env.DB.prepare('SELECT email FROM users WHERE email = ?')
       .bind(message.email)
@@ -208,32 +230,38 @@ export class GetUserHandler {
 }
 ```
 
-The rules for handlers:
+The rules for files and pairs:
 
-- The file name ends in `Handler.js`. The key is the file name without `Handler.js` [D-10]. For example, `ChargeCardHandler.js` in `commands/billing/` has the key `ChargeCard`.
-- The key comparison is exact and case-sensitive. A message class `registerUser` does not match `RegisterUserHandler.js` [D-11].
-- The file exports the class with a named export. The export name is the file name without `.js` [D-13].
-- The class has an instance method `handle(message)`. The method gets exactly one argument [D-14].
-- `handle()` can be sync or async [D-14].
-- `handle()` must be a method of the class or of a base class. A class field such as `handle = () => {}` is not valid [D-15].
-- zeg creates a new instance for each dispatch, with `new RegisterUserHandler()` and no arguments [D-16]. A value that you set on `this` exists only for that dispatch.
-- zeg passes no context to the handler. The handler imports `env` and `waitUntil` from `'cloudflare:workers'` [D-18].
-- A handler cannot get the `Request` object. The caller must put the necessary data into the message [D-18].
-- A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'` [D-19].
-- The return value of a command handler has no effect [D-34].
-- A query handler must not return `undefined`. It can return `null` [D-35, D-36].
+- Each file that a glob finds must be part of a pair [D-10]. Exclude helper files with a negative glob pattern [D-14].
+- A handler file name ends in `Handler.js`. Each other file that a glob finds is a message file. For this reason, the name of a message file cannot end in `Handler.js` [D-15].
+- `X.js` and `XHandler.js` in the same folder form a pair. Each message file needs its handler file, and each handler file needs its message file. The file names must match exactly, and the match is case-sensitive [D-11].
+- Files with the same name in different folders form different pairs [D-12].
+- zeg reads only the default export of each file [D-13].
+
+The rules for handler classes:
+
+- The class has an instance method `handle(message)`. The method gets exactly one argument [D-18].
+- `handle()` can be sync or async [D-18].
+- `handle()` must be a method of the class or of a base class. A class field such as `handle = () => {}` is not valid [D-19].
+- zeg creates a new instance for each dispatch, with `new HandlerClass()` and no arguments [D-21]. A value that you set on `this` exists only for that dispatch.
+- zeg gives no context to the handler. The handler imports `env` and `waitUntil` from `'cloudflare:workers'` [D-22].
+- A handler cannot get the `Request` object. The caller must put the necessary data into the message [D-22].
+- A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'` [D-23].
+- A message file or a handler file must not import `src/index.js` [D-25].
+- The return value of a command handler has no effect [D-42].
+- A query handler must not return `undefined`. It can return `null` [D-43, D-44].
 
 ### 3.7 Worker entry
 
 ```js
 // src/index.js
 import { configure, command, query } from '@otar/zeg';
-import { RegisterUser } from './commands/RegisterUser.js';
-import { GetUser } from './queries/GetUser.js';
+import RegisterUser from './commands/RegisterUser.js';
+import GetUser from './queries/GetUser.js';
 
 configure({
-  commands: import.meta.glob('./commands/**/*Handler.js'),
-  queries: import.meta.glob('./queries/**/*Handler.js'),
+  commands: import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true }),
+  queries: import.meta.glob(['./queries/**/*.js', '!**/_*.js'], { eager: true }),
 });
 
 export default {
@@ -246,7 +274,9 @@ export default {
 };
 ```
 
-`configure()` is module-level code in the Worker entry file. As a result, it runs one time for each isolate [D-04, D-05].
+The caller imports a message class with a default import. You can use any local name, for example `RegisterUser`.
+
+`configure()` is module-level code in the Worker entry file. As a result, it runs one time for each isolate [D-04, D-05]. If `configure()` throws, the Worker does not start, and `vite dev` does not start [D-38].
 
 Vite reads the glob patterns at build time. For this reason, each pattern must be a string literal in your own file [D-07].
 
@@ -262,15 +292,16 @@ import { configure, command, query, CqrsError } from '@otar/zeg';
 
 ```
 configure(options) -> undefined
-  options.commands  optional. The output of import.meta.glob for command handlers.
-  options.queries   optional. The output of import.meta.glob for query handlers.
+  options.commands  optional. The output of import.meta.glob({ eager: true }) for the command files.
+  options.queries   optional. The output of import.meta.glob({ eager: true }) for the query files.
 ```
 
-- A glob output is an object. Each key is a file path. Each value is a function that loads the file and returns a Promise for the module.
-- Each call replaces all handlers of the previous call [D-29].
-- `configure({})` is valid and creates an empty registry [D-30].
-- If the options are not valid, `configure()` throws a `CqrsError` with the code `INVALID_CONFIG` [D-31]. See section 6.1.
-- `configure()` checks all options before it changes the registry. If it throws, the handlers of the previous call stay active [D-32].
+- A glob output is a plain object. Each property name is a file path. Each property value is the module of that file [D-07].
+- An option with the value `undefined` is the same as a missing option [D-35].
+- `configure()` checks all files, pairs and classes. If a check fails, it throws a `CqrsError` with the code `INVALID_CONFIG` [D-37]. See section 6.1.
+- `configure()` checks all options before it changes the registry. If it throws, the handlers of the previous call stay active [D-39].
+- Each call replaces all handlers of the previous call [D-35].
+- `configure({})` is valid and creates an empty registry [D-36].
 
 ### 4.2 command(message)
 
@@ -278,11 +309,11 @@ configure(options) -> undefined
 command(message) -> Promise<undefined>
 ```
 
-- `message` must be an instance of a named class [D-21].
-- zeg finds the command handler whose key is equal to `message.constructor.name` [D-12].
-- zeg deep-freezes `message` immediately before `handle()` runs [D-23].
-- The Promise resolves to `undefined` when `handle()` is complete [D-34].
-- If an error occurs, the Promise rejects. `command()` never throws synchronously [D-33].
+- `message` must be an object. It must not be `null`, a function, an array or a plain object [D-27].
+- zeg finds the handler through the class of `message` [D-16].
+- zeg deep-freezes `message` immediately before `handle()` runs [D-29].
+- The Promise resolves to `undefined` when `handle()` is complete [D-42].
+- If an error occurs, the Promise rejects. `command()` never throws synchronously [D-41].
 
 ### 4.3 query(message)
 
@@ -290,12 +321,12 @@ command(message) -> Promise<undefined>
 query(message) -> Promise<result>
 ```
 
-- `message` must be an instance of a named class [D-21].
-- zeg finds the query handler whose key is equal to `message.constructor.name` [D-12].
-- zeg deep-freezes `message` immediately before `handle()` runs [D-23].
-- The Promise resolves to the return value of `handle()`, after `await` [D-35].
-- If that value is `undefined`, the Promise rejects with a `CqrsError` with the code `UNDEFINED_RESULT` [D-36].
-- `query()` never throws synchronously [D-33].
+- `message` must be an object. It must not be `null`, a function, an array or a plain object [D-27].
+- zeg finds the handler through the class of `message` [D-16].
+- zeg deep-freezes `message` immediately before `handle()` runs [D-29].
+- The Promise resolves to the return value of `handle()`, after `await` [D-43].
+- If that value is `undefined`, the Promise rejects with a `CqrsError` with the code `UNDEFINED_RESULT` [D-44].
+- `query()` never throws synchronously [D-41].
 
 ### 4.4 CqrsError
 
@@ -306,10 +337,10 @@ new CqrsError(code, message) -> CqrsError
   message  the message argument, a description for people
 ```
 
-- `CqrsError` extends `Error` [D-43].
-- The constructor is public. It does not check the code [D-44].
-- zeg adds no other properties [D-45].
-- The error text of a `CqrsError` from zeg can change in any version. The class and the code are the API [D-47].
+- `CqrsError` extends `Error` [D-50].
+- The constructor is public. It does not check the code [D-51].
+- zeg adds no other properties [D-52].
+- The error text of a `CqrsError` from zeg can change in any version. The class and the code are the API [D-54].
 
 ```js
 const error = new CqrsError('HANDLER_NOT_FOUND', 'test');
@@ -318,18 +349,11 @@ error.name;              // 'CqrsError'
 error.code;              // 'HANDLER_NOT_FOUND'
 ```
 
-### 4.5 Handler load
-
-- zeg loads a handler file at the first dispatch to that handler [D-17].
-- zeg then checks the export. It must be a function, and its `prototype.handle` must be a function [D-15].
-- After the check passes, zeg keeps the class for later dispatches [D-17].
-- If the load or the check fails, zeg keeps nothing. The next dispatch loads the file again [D-17].
-
 ## 5. Message rules
 
 ### 5.1 Valid messages
 
-A message must be an instance of a named class [D-21]:
+A message must be an object. It must not be `null`, a function, an array or a plain object [D-27]:
 
 ```js
 await command(new RegisterUser('a@b.c'));   // valid
@@ -338,30 +362,43 @@ await command({ email: 'a@b.c' });          // TypeError: plain object
 await command([1, 2]);                      // TypeError: array
 await command(null);                        // TypeError
 await command('RegisterUser');              // TypeError: primitive
-await command(new (class {})());            // TypeError: anonymous class
+await command(RegisterUser);                // TypeError: the class, not an instance
 ```
 
-A subclass uses only its own name [D-22]:
+The class of the message must be a message class that the glob of the correct kind found [D-47]:
 
 ```js
-class AdminRegisterUser extends RegisterUser {}
+await command(new (class {})());
+// CqrsError HANDLER_NOT_FOUND: no glob found this class
 
-await command(new AdminRegisterUser('a@b.c'));
-// zeg uses only the key 'AdminRegisterUser'
+await command(new GetUser('a@b.c'));
+// CqrsError HANDLER_NOT_FOUND: GetUser is a query (section 6.2)
+```
+
+A subclass is a different class. It needs its own pair [D-28]:
+
+```js
+// src/commands/RegisterAdmin.js
+import RegisterUser from './RegisterUser.js';
+
+export default class extends RegisterUser {}
+
+// src/commands/RegisterAdminHandler.js must also exist
 ```
 
 ### 5.2 Deep freeze
 
-zeg freezes the message immediately before `handle()` runs [D-23]. It freezes these values:
+zeg freezes the message immediately before `handle()` runs [D-29]. It freezes these values:
 
 - the message itself
 - each nested plain object
 - each nested array
 
-zeg does not change other nested objects, and it does not walk them [D-24].
+zeg does not change other nested objects, and it does not walk them [D-30].
 
 ```js
-class CreateOrder {
+// src/commands/CreateOrder.js
+export default class {
   constructor(items, meta, createdAt, bytes) {
     this.items = items;         // array: frozen
     this.meta = meta;           // plain object: frozen
@@ -374,79 +411,92 @@ class CreateOrder {
 A handler cannot change a frozen value. A change throws a `TypeError`. Array methods such as `push()` always throw. An assignment throws because ES modules use strict mode:
 
 ```js
-export class CreateOrderHandler {
+// src/commands/CreateOrderHandler.js
+export default class {
   handle(message) {
     message.items.push('x'); // TypeError: the array is frozen
   }
 }
 ```
 
-The caller's object stays frozen after the dispatch [D-28]. If the dispatch stops before deep freeze starts, zeg does not change the message [D-26]. If `Object.freeze` throws during deep freeze, the Promise rejects with that error, and `handle()` does not run [D-27].
+The caller's object stays frozen after the dispatch [D-34]. If the dispatch stops before deep freeze starts, zeg does not change the message [D-32]. If `Object.freeze` throws during deep freeze, the Promise rejects with that error, and `handle()` does not run [D-33].
 
 ## 6. Error codes
 
 | Code | Source | Cause |
 |---|---|---|
-| `INVALID_CONFIG` | `configure()` throws | The options are not valid. See section 6.1. |
-| `NOT_CONFIGURED` | the Promise of `command()` or `query()` rejects | No call to `configure()` returned without an error before the dispatch [D-38]. |
-| `HANDLER_NOT_FOUND` | the Promise of `command()` or `query()` rejects | No handler of this kind has the message name as its key [D-39]. |
-| `INVALID_HANDLER` | the Promise of `command()` or `query()` rejects | The handler module has no export whose name is the file name without `.js`, or the export does not pass the check in section 4.5 [D-41]. |
-| `UNDEFINED_RESULT` | the Promise of `query()` rejects | The query handler returned `undefined` [D-36]. |
+| `INVALID_CONFIG` | `configure()` throws | The options, the files, the pairs or the classes are not valid. See section 6.1. |
+| `NOT_CONFIGURED` | the Promise of `command()` or `query()` rejects | No call to `configure()` returned without an error before the dispatch [D-46]. |
+| `HANDLER_NOT_FOUND` | the Promise of `command()` or `query()` rejects | The class of the message is not a message class of this kind [D-47]. |
+| `UNDEFINED_RESULT` | the Promise of `query()` rejects | The query handler returned `undefined` [D-44]. |
 
 ### 6.1 INVALID_CONFIG cases
 
-`configure()` throws a `CqrsError` with the code `INVALID_CONFIG` in these cases [D-31]:
+`configure()` throws a `CqrsError` with the code `INVALID_CONFIG` in these cases [D-37]:
 
 ```js
-configure();                                      // the argument is not an object
-configure({ handlers: {} });                      // unknown key
-configure({ commands: 'x' });                     // the value is not an object
-configure({ commands: { './aHandler.js': {} } }); // the glob value is not a function
+configure();                              // the argument is not an object
+configure({ handlers: {} });              // unknown key
+configure({ commands: 'x' });             // the value is not an object
 
 configure({ commands: import.meta.glob('./commands/**/*.js') });
-// './commands/RegisterUser.js' does not end in Handler.js
+// a lazy glob: each value is a function, not a module
 
-// './commands/users/ImportHandler.js' and './commands/admin/ImportHandler.js'
-// the same file name occurs two times in one kind
-
-// './commands/GetUserHandler.js' and './queries/GetUserHandler.js'
-// the same message name has a command handler and a query handler
+configure({ commands: { './commands/Ping.ts': { default: class {} } } });
+// the path does not end in .js
 ```
 
-### 6.2 Hints in HANDLER_NOT_FOUND
+These cases come from the files:
 
-The error text contains a hint in two cases [D-40]:
+```
+src/commands/Ping.js                 exists
+src/commands/PingHandler.js          missing       -> message file without handler file
+
+src/commands/PongHandler.js          exists
+src/commands/Pong.js                 missing       -> handler file without message file
+
+src/commands/helpers.js              a helper file that no negative pattern excludes
+                                     -> no default export, or no helpersHandler.js
+
+src/commands/Handler.js              -> a handler file without a message file
+
+src/commands/Ping.js                 export const x = 1 (no default export)
+
+src/commands/PingHandler.js          export default class { handel(m) {} }
+                                     -> no handle() method
+
+src/commands/Copy.js                 export { default } from './Ping.js'
+src/commands/CopyHandler.js          exists
+                                     -> the same class in two message files
+```
+
+### 6.2 Hint in HANDLER_NOT_FOUND
+
+If the message is a message of the other kind, the error text tells you to use the other function [D-48]:
 
 ```js
 await command(new GetUser('a@b.c'));
 // CqrsError HANDLER_NOT_FOUND
-// the text says that a query handler exists and tells you to use query()
+// the text names the key './queries/GetUser' and tells you to use query()
 ```
 
-```js
-// a build without keepNames renamed the class to RegisterUser$1
-await command(new RegisterUser('a@b.c'));
-// CqrsError HANDLER_NOT_FOUND
-// the text names the keepNames setting in vite.config.js
-```
+zeg names the message file by its key, not by its class name [D-48].
 
-If a build minifies the code and has no `keepNames`, the class name becomes a short name, for example `r`. Then the error text contains no hint.
+### 6.3 Errors that are not a CqrsError
 
-### 6.3 Errors that zeg does not create
+These errors are not a `CqrsError`:
 
-zeg does not create these errors:
+- If a message is not valid, the Promise rejects with a built-in `TypeError` [D-45].
+- If `new HandlerClass()` or `handle()` throws, the Promise rejects with the same error object [D-49].
+- If the top-level code of a message file or a handler file throws, the Worker fails at startup [D-26].
 
-- If a message is not valid, the Promise rejects with a `TypeError` [D-37].
-- If `handle()` throws, the Promise rejects with the same error object [D-42].
-- If the load of a handler file fails, the Promise rejects with the same error object [D-42].
-
-An error from `handle()` can be a `CqrsError`. For example, a handler dispatches another message, and that dispatch rejects with `HANDLER_NOT_FOUND`. zeg does not wrap this error. As a result, the caller cannot see if the error came from its own dispatch or from a nested dispatch.
+An error from `handle()` can be a `CqrsError`. For example, a handler dispatches another message, and the Promise of that dispatch rejects with `HANDLER_NOT_FOUND`. zeg does not wrap this error. As a result, the caller cannot know if the error came from its own dispatch or from a nested dispatch.
 
 ### 6.4 Example: catch an error
 
 ```js
 import { command, CqrsError } from '@otar/zeg';
-import { RegisterUser } from './commands/RegisterUser.js';
+import RegisterUser from './commands/RegisterUser.js';
 
 async function register(email) {
   try {
@@ -464,7 +514,7 @@ async function register(email) {
 
 ## 7. Tests
 
-The tests run in Vitest with `@cloudflare/vitest-plugin` [D-61]. Vitest supports `import.meta.glob`.
+The tests run in Vitest with `@cloudflare/vitest-plugin` [D-68]. Vitest supports `import.meta.glob`.
 
 ### 7.1 Test setup
 
@@ -501,17 +551,19 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 
 ### 7.2 Test with the real handlers
 
+A test file can use its own globs. The file paths and the keys in error texts then start with `../src/`.
+
 ```js
 // test/users.test.js
 import { it, expect } from 'vitest';
 import { configure, command, query } from '@otar/zeg';
-import { RegisterUser } from '../src/commands/RegisterUser.js';
-import { GetUser } from '../src/queries/GetUser.js';
+import RegisterUser from '../src/commands/RegisterUser.js';
+import GetUser from '../src/queries/GetUser.js';
 
 it('registers a user', async () => {
   configure({
-    commands: import.meta.glob('../src/commands/**/*Handler.js'),
-    queries: import.meta.glob('../src/queries/**/*Handler.js'),
+    commands: import.meta.glob(['../src/commands/**/*.js', '!**/_*.js'], { eager: true }),
+    queries: import.meta.glob(['../src/queries/**/*.js', '!**/_*.js'], { eager: true }),
   });
   await command(new RegisterUser('a@b.c'));
   expect(await query(new GetUser('a@b.c'))).toEqual({ email: 'a@b.c' });
@@ -520,21 +572,24 @@ it('registers a user', async () => {
 
 ### 7.3 Test with a fake handler
 
-The glob output is a plain object. As a result, a test can write one by hand:
+The eager glob output is a plain object. As a result, a test can write one by hand. The object must contain an entry for the message file and an entry for the handler file:
 
 ```js
 import { it, expect } from 'vitest';
 import { configure, query } from '@otar/zeg';
-import { GetUser } from '../src/queries/GetUser.js';
+import GetUser from '../src/queries/GetUser.js';
 
 it('uses a fake handler', async () => {
-  class GetUserHandler {
+  class FakeGetUserHandler {
     handle(message) {
       return { email: message.email, fake: true };
     }
   }
   configure({
-    queries: { './GetUserHandler.js': async () => ({ GetUserHandler }) },
+    queries: {
+      './GetUser.js': { default: GetUser },
+      './GetUserHandler.js': { default: FakeGetUserHandler },
+    },
   });
   expect(await query(new GetUser('a@b.c'))).toEqual({ email: 'a@b.c', fake: true });
 });
@@ -542,12 +597,12 @@ it('uses a fake handler', async () => {
 
 ### 7.4 Test of one handler
 
-A test can create a handler directly, without zeg. `GetUserHandler.handle()` is async, so the test uses `await`. The handler reads `env.DB`, so the test needs the setup in section 7.1.
+A test can create a handler directly, without zeg. The `handle()` method of the `GetUser` handler is async, so the test uses `await`. The handler reads `env.DB`, so the test needs the setup in section 7.1.
 
 ```js
 import { it, expect } from 'vitest';
-import { GetUserHandler } from '../src/queries/GetUserHandler.js';
-import { GetUser } from '../src/queries/GetUser.js';
+import GetUserHandler from '../src/queries/GetUserHandler.js';
+import GetUser from '../src/queries/GetUser.js';
 
 it('returns null for an unknown user', async () => {
   const result = await new GetUserHandler().handle(new GetUser('nobody@b.c'));
@@ -557,17 +612,19 @@ it('returns null for an unknown user', async () => {
 
 ### 7.5 Module state in tests
 
-Each test file gets a new module state. The tests in one file share the zeg registry.
-
-If `wrangler.jsonc` has `main`, the plugin loads that module for each test file. As a result, the `configure()` call in `src/index.js` runs before the tests. For this reason, each test calls `configure()` with the handlers that it needs [D-29].
-
-A test that needs a registry without configuration, for example a test for `NOT_CONFIGURED`, needs a Wrangler configuration without `main`. Another possibility is a `main` module that does not call `configure()`.
+- Each test file gets a new module state. The tests in one file share the zeg registry.
+- The plugin adds an import of `src/index.js` to the module `cloudflare:test` (background fact 13). The setup file in section 7.1 imports `cloudflare:test`. As a result, `src/index.js` and its `configure()` call run before the tests in each test file.
+- A `configure()` call in a test replaces the handlers of `src/index.js` [D-35]. A later `exports.default.fetch()` does not run `src/index.js` again, so the handlers of the test stay active.
+- If no file imports `cloudflare:test`, `src/index.js` runs at the first `exports.default.fetch()` in a test file. Its `configure()` call then replaces the handlers that the test configured.
+- For these reasons, each test calls `configure()` with the files that it needs.
+- Do not use `vi.resetModules()` in tests that use zeg. A reset creates new class objects and a new instance of zeg (background fact 14). A glob in the test file still supplies the classes from before the reset.
 
 ## 8. What zeg does not do
 
 - no middleware, no events, no Cloudflare Queues [D-01]
-- no context argument for handlers [D-18]
+- no context argument for handlers [D-22]
 - no build with Wrangler only [D-06]
-- no fallback to the handler of a parent class [D-22]
-- no guard against recursive dispatch [D-20]
-- no type declarations [D-50]
+- no class names for resolution [D-08]
+- no fallback to the handler of a parent class [D-28]
+- no guard against recursive dispatch [D-24]
+- no type declarations [D-57]
