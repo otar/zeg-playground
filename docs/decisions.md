@@ -142,6 +142,10 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-71** The size of `src/index.js` after `esbuild --minify --format=esm` and `gzip -9` must be 1536 bytes or less.
 - **D-72** A GitHub Actions workflow runs all tests and checks on each push to `main`, with Node 22.
 
+## Tooling (revision 5)
+
+- **D-73** The repository has no `.npmrc` file, so npm checks the peer dependencies of each package. `package.json` has no `overrides` field. `devDependencies` lists only the packages that the project uses directly. **(detail)** npm 10 cannot resolve the dependencies without a lockfile (background fact 19). For this reason, a change to the dependencies or to `package-lock.json` must use npm 11.6 or later. CI uses `npm ci`, which works with npm 10.
+
 ## Background facts
 
 The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8.3.1 with Rolldown 1.2.11, `@cloudflare/vite-plugin` 1.60.2, Vitest 4.1.11, `@cloudflare/vitest-plugin` 1.2.8 and workerd 1.20260925.1. The tests ran in local workerd. They did not run on a Cloudflare deployment.
@@ -164,6 +168,7 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 16. One `import.meta.glob` call accepts an array of patterns, including negative patterns. As a result, one glob can find files in several folders.
 17. Each glob supplies file paths relative to the file that contains it. As a result, two globs in different files can supply the same file path. If a project merges them with `{ ...a, ...b }`, the merge loses entries, and no error occurs. In the lab, 6 files became 4 entries.
 18. The deep freeze of revision 2 needed 22 ms for a message with an array of 10,000 plain objects. This test ran in Node 22, which uses V8, the same engine as workerd. The Workers Free plan allows 10 ms of CPU time for each request. The deep-freeze code of the lab prototype was 128 bytes after minify and gzip.
+19. npm 10.9 stops with the error `Cannot read properties of null (reading 'edgesOut')` when it resolves the development dependencies without a lockfile. The cause is an optional peer dependency `vitest: "*"`. It comes from `vite` 8 through `@vitejs/devtools` and `@vitejs/devtools-vitest`. Since 2026-09-03, the range `*` selects vitest 5, and npm 10 then stops with this error. npm 11.6.0 contains the fix, but npm 10 does not. With an existing lockfile, `npm ci` and `npm install` work with npm 10.
 
 ## History
 
@@ -179,3 +184,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The library no longer freezes the message (D-29). Revision 3 removed D-30 to D-34 and the deep-freeze detail of D-21. Deep freeze also froze nested objects that other code can share with the caller. It also cost CPU time and code size (background fact 18).
   - Revision 3 kept all other IDs. It removed background fact 15 and added facts 16 to 18.
 - **Revision 4** (phase 2): the spec showed that a build test cannot run in workerd, because it starts `vite` processes. Revision 4 limited D-68 to the unit tests. The build tests and the static checks run in Node. All IDs stay the same.
+- **Revision 5** (after phase 4): the user asked for three changes.
+  - The repository no longer uses the npm setting `legacy-peer-deps`. Revision 5 added D-73 and background fact 19.

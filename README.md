@@ -157,6 +157,8 @@ The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The b
 
 GitHub Actions runs these commands on each push to `main`.
 
+To change the dependencies, use npm 11.6 or later, for example `npx npm@11 install`. npm 10 cannot resolve the dependencies without a lockfile (background fact 19 in `docs/decisions.md`).
+
 ## Documents
 
 - `docs/decisions.md`: all design decisions

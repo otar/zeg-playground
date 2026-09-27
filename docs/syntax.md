@@ -79,6 +79,8 @@ test/
 
 The lab tests did not test the `deploy` script.
 
+npm 10 cannot resolve these packages without a lockfile (background fact 19 in `docs/decisions.md`). For the first `npm install`, use npm 11.6 or later.
+
 ### 3.2 vite.config.js
 
 ```js

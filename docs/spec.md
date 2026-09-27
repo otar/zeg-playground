@@ -938,3 +938,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-70 | REQ-131 |
 | D-71 | REQ-132 |
 | D-72 | REQ-133 |
+| D-73 | Development setup only |
