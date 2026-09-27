@@ -2,7 +2,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, Q, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
-import { checkSeen, expectHandled, expectNotHandled, expectRejects, expectThrows, pairOf } from './helpers.js';
+import {
+  checkSeen,
+  expectHandled,
+  expectNotHandled,
+  expectRejects,
+  expectThrows,
+  pairOf,
+} from './helpers.js';
 
 beforeEach(() => {
   resetCalls();
@@ -39,12 +46,21 @@ describe('4.7 dispatch: the lookup', () => {
     class UniqueHandler654 {
       handle() {}
     }
-    expect([UniqueName987.name, UniqueHandler654.name]).toEqual(['UniqueName987', 'UniqueHandler654']);
-    zeg({ commands: pairOf(UniqueName987, UniqueHandler654, 'U'), queries: pairOf(Q, UniqueHandler654, 'Q') });
+    expect([UniqueName987.name, UniqueHandler654.name]).toEqual([
+      'UniqueName987',
+      'UniqueHandler654',
+    ]);
+    zeg({
+      commands: pairOf(UniqueName987, UniqueHandler654, 'U'),
+      queries: pairOf(Q, UniqueHandler654, 'Q'),
+    });
     const hint = await expectRejects('HANDLER_NOT_FOUND', query(new UniqueName987()));
     const undef = await expectRejects('UNDEFINED_RESULT', query(new Q(1)));
     const z6 = expectThrows('INVALID_CONFIG', {
-      commands: [pairOf(UniqueName987, UniqueHandler654, 'U'), pairOf(UniqueName987, UniqueHandler654, 'V')],
+      commands: [
+        pairOf(UniqueName987, UniqueHandler654, 'U'),
+        pairOf(UniqueName987, UniqueHandler654, 'V'),
+      ],
     });
     for (const error of [hint, undef, z6]) {
       expect(error.message).not.toContain('UniqueName987');
@@ -97,8 +113,18 @@ describe('4.7 dispatch: the lookup', () => {
   });
 
   it('REQ-076 zeg does not use class names', async () => {
-    const R1 = (() => class R { constructor(v) { this.v = v; } })();
-    const R2 = (() => class R { constructor(v) { this.v = v; } })();
+    const R1 = (() =>
+      class R {
+        constructor(v) {
+          this.v = v;
+        }
+      })();
+    const R2 = (() =>
+      class R {
+        constructor(v) {
+          this.v = v;
+        }
+      })();
     expect(R1.name).toBe('R');
     expect(R2.name).toBe('R');
     zeg({

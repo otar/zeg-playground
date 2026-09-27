@@ -17,9 +17,13 @@ describe('4.9 dispatch: the result', () => {
         const r = await settle(command(new A(1)));
         expect(r).toEqual({ ok: true, value: undefined });
       }
-      for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+      for (const spy of spies) {
+        expect(spy).not.toHaveBeenCalled();
+      }
     } finally {
-      for (const spy of spies) spy.mockRestore();
+      for (const spy of spies) {
+        spy.mockRestore();
+      }
     }
   });
 
@@ -64,15 +68,28 @@ describe('4.9 dispatch: the result', () => {
   });
 
   it('REQ-094 zeg resolves a thenable from handle()', async () => {
-    zeg({ queries: pairOf(Q, returning(() => ({ then(resolve) { resolve(5); } })), 'Q') });
+    zeg({
+      queries: pairOf(
+        Q,
+        returning(() => ({
+          then(resolve) {
+            resolve(5);
+          },
+        })),
+        'Q',
+      ),
+    });
     expect(await query(new Q(1))).toBe(5);
     zeg({
-      commands: pairOf(A, returning(() => ({
-        then(resolve) {
-          calls.push('then');
-          resolve(5);
-        },
-      }))),
+      commands: pairOf(
+        A,
+        returning(() => ({
+          then(resolve) {
+            calls.push('then');
+            resolve(5);
+          },
+        })),
+      ),
     });
     const r = await settle(command(new A(1)));
     expect(r).toEqual({ ok: true, value: undefined });

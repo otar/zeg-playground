@@ -11,7 +11,9 @@ const ROOT = resolve(import.meta.dirname, '../..');
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const readJson = (path) => JSON.parse(read(path));
 const gitFiles = (...patterns) =>
-  execFileSync('git', ['ls-files', '--', ...patterns], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  execFileSync('git', ['ls-files', '--', ...patterns], { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
 
 // Reads a JSONC file: JSON with // and /* */ comments and commas after the last entry.
 function readJsonc(path) {
@@ -21,10 +23,16 @@ function readJsonc(path) {
     const c = text[i];
     if (c === '"') {
       const start = i;
-      for (i++; text[i] !== '"'; i++) if (text[i] === '\\') i++;
+      for (i++; text[i] !== '"'; i++) {
+        if (text[i] === '\\') {
+          i++;
+        }
+      }
       out += text.slice(start, i + 1);
     } else if (c === '/' && text[i + 1] === '/') {
-      while (i < text.length && text[i] !== '\n') i++;
+      while (i < text.length && text[i] !== '\n') {
+        i++;
+      }
       out += '\n';
     } else if (c === '/' && text[i + 1] === '*') {
       i = text.indexOf('*/', i + 2) + 1;
@@ -60,9 +68,13 @@ describe('4.1 package', () => {
     expect(pkg.exports).toBe('./src/index.js');
     expect(pkg.license).toBe('MIT');
     expect(pkg.publishConfig).toEqual({ access: 'public' });
-    for (const field of ['private', 'peerDependencies', 'types', 'typings']) expect(pkg).not.toHaveProperty(field);
+    for (const field of ['private', 'peerDependencies', 'types', 'typings']) {
+      expect(pkg).not.toHaveProperty(field);
+    }
     expect(Object.keys(pkg.dependencies ?? {})).toEqual([]);
-    for (const script of ['build', 'prepare', 'prepublishOnly']) expect(pkg.scripts ?? {}).not.toHaveProperty(script);
+    for (const script of ['build', 'prepare', 'prepublishOnly']) {
+      expect(pkg.scripts ?? {}).not.toHaveProperty(script);
+    }
     expect(gitFiles('*.d.ts')).toEqual([]);
   });
 
@@ -87,7 +99,10 @@ describe('4.1 package', () => {
 describe('4.12 build and runtime', () => {
   it('REQ-120 (spec detail 22) examples/basic-worker/ contains the example project of syntax.md section 3', () => {
     const syntax = read('docs/syntax.md');
-    const section = syntax.slice(syntax.indexOf('## 3. Example project'), syntax.indexOf('### 3.8'));
+    const section = syntax.slice(
+      syntax.indexOf('## 3. Example project'),
+      syntax.indexOf('### 3.8'),
+    );
     const blocks = [...section.matchAll(/```[a-z]*\n([\s\S]*?)```/g)].map((match) => match[1]);
     const example = (path) => read(`examples/basic-worker/${path}`);
 
@@ -99,14 +114,19 @@ describe('4.12 build and runtime', () => {
     const files = {};
     for (const block of blocks) {
       const match = block.match(/^(?:\/\/|--) ((?:src|migrations)\/\S+)/);
-      if (match) files[match[1]] = block;
+      if (match) {
+        files[match[1]] = block;
+      }
     }
-    const exampleFiles = gitFiles('examples/basic-worker/src', 'examples/basic-worker/migrations').map((path) =>
-      path.slice('examples/basic-worker/'.length),
-    );
+    const exampleFiles = gitFiles(
+      'examples/basic-worker/src',
+      'examples/basic-worker/migrations',
+    ).map((path) => path.slice('examples/basic-worker/'.length));
     expect(exampleFiles.sort()).toEqual(Object.keys(files).sort());
     for (const [path, block] of Object.entries(files)) {
-      if (path === 'src/index.js') continue;
+      if (path === 'src/index.js') {
+        continue;
+      }
       expect(example(path), path).toBe(block);
     }
     // src/index.js has one added route
@@ -119,7 +139,9 @@ describe('4.12 build and runtime', () => {
     const documented = JSON.parse(blocks.find((block) => block.includes('"scripts"')));
     expect(pkg.name).toBe(documented.name);
     expect(pkg.type).toBe(documented.type);
-    for (const script of ['dev', 'build', 'preview', 'deploy']) expect(pkg.scripts[script]).toBe(documented.scripts[script]);
+    for (const script of ['dev', 'build', 'preview', 'deploy']) {
+      expect(pkg.scripts[script]).toBe(documented.scripts[script]);
+    }
     expect(pkg.dependencies).toEqual({ '@otar/zeg': 'file:../..' });
     for (const name of ['@cloudflare/vite-plugin', 'vite', 'wrangler']) {
       expect(pkg.devDependencies[name]).toBe(documented.devDependencies[name]);
@@ -139,7 +161,9 @@ describe('4.13 non-functional checks', () => {
     expect(devDependencies.vitest).toMatch(/^\^4\.1/);
     expect(devDependencies).toHaveProperty('@cloudflare/vitest-plugin');
 
-    expect(read('vitest.config.js')).toContain("import { cloudflareTest } from '@cloudflare/vitest-plugin';");
+    expect(read('vitest.config.js')).toContain(
+      "import { cloudflareTest } from '@cloudflare/vitest-plugin';",
+    );
     const { default: config } = await import(pathToFileURL(join(ROOT, 'vitest.config.js')).href);
     const unit = config.test.projects.find((project) => project.test.name === 'unit');
     const { cloudflareTest } = await import('@cloudflare/vitest-plugin');
@@ -150,7 +174,11 @@ describe('4.13 non-functional checks', () => {
   it('REQ-131 the coverage check uses Istanbul for src/index.js with thresholds of 100%', async () => {
     // `npm run coverage` measures the coverage. This test checks its configuration.
     const { default: config } = await import(pathToFileURL(join(ROOT, 'vitest.config.js')).href);
-    expect(config.test.coverage).toMatchObject({ provider: 'istanbul', include: ['src/index.js'], thresholds: { 100: true } });
+    expect(config.test.coverage).toMatchObject({
+      provider: 'istanbul',
+      include: ['src/index.js'],
+      thresholds: { 100: true },
+    });
     expect(config.test.coverage.reporter).toContain('json-summary');
     expect(existsSync(join(ROOT, 'scripts/check-coverage.js'))).toBe(true);
   });
@@ -166,8 +194,12 @@ describe('4.13 non-functional checks', () => {
     // and the size check. `npm run coverage` runs the coverage check.
     const { scripts } = readJson('package.json');
     expect(scripts.test).toBe('vitest run');
-    expect(scripts.coverage).toBe('vitest run --project unit --coverage && node scripts/check-coverage.js');
-    for (const file of ['build', 'static', 'size']) expect(existsSync(join(ROOT, `test/node/${file}.test.js`))).toBe(true);
+    expect(scripts.coverage).toBe(
+      'vitest run --project unit --coverage && node scripts/check-coverage.js',
+    );
+    for (const file of ['build', 'static', 'size']) {
+      expect(existsSync(join(ROOT, `test/node/${file}.test.js`))).toBe(true);
+    }
   });
 });
 
@@ -178,6 +210,8 @@ describe('1.5 test environment', () => {
     expect(read('vitest.config.js')).toContain("configPath: './test/wrangler.jsonc'");
     expect(readJsonc('test/wrangler.jsonc')).not.toHaveProperty('main');
     expect(config.test).not.toHaveProperty('setupFiles');
-    for (const project of config.test.projects) expect(project.test).not.toHaveProperty('setupFiles');
+    for (const project of config.test.projects) {
+      expect(project.test).not.toHaveProperty('setupFiles');
+    }
   });
 });

@@ -81,7 +81,9 @@ export async function expectTypeError(promise) {
 // Settles a Promise. If it rejects with a ZegError, the error goes to the REQ-113 checks.
 export async function settleAndCheck(promise) {
   const r = await settle(promise);
-  if (!r.ok && r.error instanceof ZegError) checkKnown(r.error);
+  if (!r.ok && r.error instanceof ZegError) {
+    checkKnown(r.error);
+  }
   return r;
 }
 
@@ -110,4 +112,17 @@ export const returning = (fn) =>
   };
 
 // The invalid messages of REQ-061.
-export const invalidMessages = () => [undefined, null, 1, 'x', true, Symbol(), 1n, () => {}, A, [], {}, Object.create(null)];
+export const invalidMessages = () => [
+  undefined,
+  null,
+  1,
+  'x',
+  true,
+  Symbol(),
+  1n,
+  () => {},
+  A,
+  [],
+  {},
+  Object.create(null),
+];

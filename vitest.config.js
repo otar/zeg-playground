@@ -14,7 +14,12 @@ export default defineConfig({
         test: { name: 'unit', include: ['test/*.test.js'], sequence: { concurrent: false } }, // rule 6
       },
       {
-        test: { name: 'node', environment: 'node', include: ['test/node/*.test.js'], sequence: { concurrent: false } },
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['test/node/*.test.js'],
+          sequence: { concurrent: false },
+        },
       },
     ],
     // REQ-131: `npm run coverage` runs the unit project with --coverage.

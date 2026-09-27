@@ -102,8 +102,8 @@ zeg needs no other Vite settings [D-06, D-08].
   "main": "./src/index.js",
   "compatibility_date": "2026-09-01",
   "d1_databases": [
-    { "binding": "DB", "database_name": "users", "database_id": "<your-database-id>" }
-  ]
+    { "binding": "DB", "database_name": "users", "database_id": "<your-database-id>" },
+  ],
 }
 ```
 
@@ -185,9 +185,7 @@ import SendWelcomeEmail from './SendWelcomeEmail.js';
 
 export default class {
   async handle(message) {
-    await env.DB.prepare('INSERT INTO users (email) VALUES (?)')
-      .bind(message.email)
-      .run();
+    await env.DB.prepare('INSERT INTO users (email) VALUES (?)').bind(message.email).run();
     await command(new SendWelcomeEmail(message.email));
   }
 }
@@ -397,6 +395,7 @@ new ZegError(code, message) -> ZegError
 - zeg adds no other properties [D-52].
 - The error text of a `ZegError` from zeg can change in any version. The class and the code are the API [D-54].
 
+<!-- prettier-ignore -->
 ```js
 const error = new ZegError('HANDLER_NOT_FOUND', 'test');
 error instanceof Error;  // true
@@ -410,6 +409,7 @@ error.code;              // 'HANDLER_NOT_FOUND'
 
 A message must be an object. It must not be `null`, a function, an array or a plain object [D-27]:
 
+<!-- prettier-ignore -->
 ```js
 await command(new RegisterUser('a@b.c'));   // valid
 
@@ -464,7 +464,7 @@ export default class {
 ## 6. Error codes
 
 | Code | Source | Cause |
-|---|---|---|
+| --- | --- | --- |
 | `INVALID_CONFIG` | `zeg()` throws | The options, the files, the pairs or the classes are not valid. See section 6.1. |
 | `NOT_CONFIGURED` | the Promise of `command()` or `query()` rejects | No call to `zeg()` returned without an error before the dispatch [D-46]. |
 | `HANDLER_NOT_FOUND` | the Promise of `command()` or `query()` rejects | The class of the message is not a message class of this kind [D-47]. |
@@ -474,6 +474,7 @@ export default class {
 
 `zeg()` throws a `ZegError` with the code `INVALID_CONFIG` in these cases [D-37]:
 
+<!-- prettier-ignore -->
 ```js
 zeg();                                  // the argument is not an object
 zeg({ handlers: {} });                  // unknown key

@@ -2,7 +2,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command, query } from '@otar/zeg';
 import { A, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
-import { checkSeen, expectHandled, expectRejects, expectTypeError, invalidMessages, pairOf, settle } from './helpers.js';
+import {
+  checkSeen,
+  expectHandled,
+  expectRejects,
+  expectTypeError,
+  invalidMessages,
+  pairOf,
+  settle,
+} from './helpers.js';
 
 beforeEach(() => {
   resetCalls();
@@ -47,7 +55,9 @@ describe('4.6 dispatch: the message', () => {
         return Reflect.getPrototypeOf(target);
       },
       get(target, key, receiver) {
-        if (key === 'constructor') throw new Error('read of constructor');
+        if (key === 'constructor') {
+          throw new Error('read of constructor');
+        }
         return Reflect.get(target, key, receiver);
       },
     });
@@ -65,8 +75,19 @@ describe('4.6 dispatch: the message', () => {
     const traps = [];
     const all = {};
     const names = [
-      'get', 'has', 'set', 'ownKeys', 'getOwnPropertyDescriptor', 'defineProperty', 'deleteProperty',
-      'getPrototypeOf', 'setPrototypeOf', 'isExtensible', 'preventExtensions', 'apply', 'construct',
+      'get',
+      'has',
+      'set',
+      'ownKeys',
+      'getOwnPropertyDescriptor',
+      'defineProperty',
+      'deleteProperty',
+      'getPrototypeOf',
+      'setPrototypeOf',
+      'isExtensible',
+      'preventExtensions',
+      'apply',
+      'construct',
     ];
     for (const name of names) {
       all[name] = (...args) => {

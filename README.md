@@ -103,7 +103,7 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 ```
 
 | Export | Description |
-|---|---|
+| --- | --- |
 | `zeg(options)` | Sets the pairs of message classes and handler classes. `options.commands` and `options.queries` are each a glob output or an array of glob outputs. Each call replaces all pairs. Returns `undefined`. |
 | `command(message)` | Dispatches a command. Returns a Promise that resolves to `undefined`. |
 | `query(message)` | Dispatches a query. Returns a Promise that resolves to the value from the handler. |
@@ -135,7 +135,7 @@ Rules for the messages:
 ## Errors
 
 | Code | Source | Cause |
-|---|---|---|
+| --- | --- | --- |
 | `INVALID_CONFIG` | `zeg()` throws | The options, the files, the pairs or the classes are not valid. |
 | `NOT_CONFIGURED` | The Promise rejects | No call to `zeg()` returned before the dispatch. |
 | `HANDLER_NOT_FOUND` | The Promise rejects | The class of the message has no pair of this kind. If it is a message of the other kind, the error text tells you to use the other function. |
@@ -150,12 +150,17 @@ If the message is `null`, a primitive, a function, an array or a plain object, t
 To run the tests of zeg, do these steps in the repository root:
 
 1. Run `npm ci`.
-2. Run `npm test`. This command runs all tests and checks, except the coverage check.
+2. Run `npm test`. This command runs all tests and checks, except the coverage check. It also checks the style of the code (see below).
 3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/index.js` is 100%.
 
 The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The build tests and the static checks run in Node. The build tests install the packages of `examples/basic-worker/` in a temporary folder, so they need access to the npm registry. To run only the unit tests, run `npm run test:unit`.
 
 GitHub Actions runs these commands on each push to `main`.
+
+Prettier sets the layout of the code. ESLint finds code that is hard to read or that can be wrong. The body of each `if`, `else`, `for`, `while` and `do` statement must have braces.
+
+- To check the style, run `npm run lint`.
+- To correct the style, run `npm run lint:fix`.
 
 To change the dependencies, use npm 11.6 or later, for example `npx npm@11 install`. npm 10 cannot resolve the dependencies without a lockfile (background fact 19 in `docs/decisions.md`).
 

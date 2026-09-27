@@ -24,15 +24,25 @@ describe('4.2 zeg(): argument and options', () => {
   it('REQ-012 the argument cannot have other properties', () => {
     const notEnumerable = Object.defineProperty({}, 'extra', { value: 1, enumerable: false });
     expect(Object.keys(notEnumerable)).toEqual([]);
-    const values = [{ handlers: {} }, { commands: cmd, extra: 1 }, { extra: undefined }, { [Symbol('x')]: 1 }, notEnumerable];
-    for (const value of values) expectThrows('INVALID_CONFIG', value);
+    const values = [
+      { handlers: {} },
+      { commands: cmd, extra: 1 },
+      { extra: undefined },
+      { [Symbol('x')]: 1 },
+      notEnumerable,
+    ];
+    for (const value of values) {
+      expectThrows('INVALID_CONFIG', value);
+    }
     // Also with a valid option next to the symbol name or the name that is not enumerable
     expectThrows('INVALID_CONFIG', { commands: cmd, [Symbol('x')]: 1 });
     expectThrows('INVALID_CONFIG', Object.defineProperty({ commands: cmd }, 'extra', { value: 1 }));
   });
 
   it('REQ-012 (Z2, Z3) an own property commands that is not enumerable is a valid option', async () => {
-    expect(zeg(Object.defineProperty({}, 'commands', { value: cmd, enumerable: false }))).toBeUndefined();
+    expect(
+      zeg(Object.defineProperty({}, 'commands', { value: cmd, enumerable: false })),
+    ).toBeUndefined();
     const m = new A(1);
     await command(m);
     expectHandled('A', m);
@@ -70,7 +80,14 @@ describe('4.2 zeg(): argument and options', () => {
     // eslint-disable-next-line no-sparse-arrays
     const holey = [, cmd];
     expect(0 in holey).toBe(false);
-    for (const array of [[cmd, 'x'], [cmd, null], [cmd, []], [cmd, new Map()], [undefined], holey]) {
+    for (const array of [
+      [cmd, 'x'],
+      [cmd, null],
+      [cmd, []],
+      [cmd, new Map()],
+      [undefined],
+      holey,
+    ]) {
       expectThrows('INVALID_CONFIG', { commands: array });
     }
   });
@@ -89,13 +106,17 @@ describe('4.2 zeg(): argument and options', () => {
 
   it('REQ-016 each module in a glob output must be an object', () => {
     for (const module of [() => {}, Object.assign(() => {}, { default: B }), null, 'x']) {
-      expectThrows('INVALID_CONFIG', { commands: { ...cmd, './B.js': module, './BHandler.js': { default: BH } } });
+      expectThrows('INVALID_CONFIG', {
+        commands: { ...cmd, './B.js': module, './BHandler.js': { default: BH } },
+      });
     }
   });
 
   it('REQ-017 each file path must end in .js', () => {
     for (const path of ['./A.ts', './A.JS', './A']) {
-      const error = expectThrows('INVALID_CONFIG', { commands: { ...cmd, [path]: { default: B } } });
+      const error = expectThrows('INVALID_CONFIG', {
+        commands: { ...cmd, [path]: { default: B } },
+      });
       expect(error.message).toContain(path);
     }
   });

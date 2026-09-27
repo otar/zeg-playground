@@ -1,0 +1,6 @@
+# Prettier also reads .gitignore, so it ignores node_modules/, dist/, coverage/ and .wrangler/.
+# npm writes the lockfiles.
+package-lock.json
+# The output of the mutation tests
+reports/
+.stryker-tmp/

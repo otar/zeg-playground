@@ -10,12 +10,21 @@ beforeEach(() => {
 
 describe('4.4 zeg(): classes', () => {
   it('REQ-040 zeg() reads only the default export', async () => {
-    zeg({ commands: { './A.js': { default: A, other: 1 }, './AHandler.js': { default: AH, X: class {} } } });
+    zeg({
+      commands: {
+        './A.js': { default: A, other: 1 },
+        './AHandler.js': { default: AH, X: class {} },
+      },
+    });
     const m = new A(1);
     await command(m);
     expectHandled('A', m);
-    expectThrows('INVALID_CONFIG', { commands: { './A.js': { A }, './AHandler.js': { default: AH } } });
-    expectThrows('INVALID_CONFIG', { commands: { './A.js': { default: A }, './AHandler.js': { AH } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './A.js': { A }, './AHandler.js': { default: AH } },
+    });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './A.js': { default: A }, './AHandler.js': { AH } },
+    });
   });
 
   it('REQ-040 (Z4) zeg() reads module.default one time', () => {
@@ -26,17 +35,23 @@ describe('4.4 zeg(): classes', () => {
         return A;
       },
     };
-    expect(zeg({ commands: { './A.js': module, './AHandler.js': { default: AH } } })).toBeUndefined();
+    expect(
+      zeg({ commands: { './A.js': module, './AHandler.js': { default: AH } } }),
+    ).toBeUndefined();
     expect(reads).toBe(1);
   });
 
   it('REQ-041 a message class must be a function with a prototype object', () => {
     for (const value of [() => {}, async function () {}, {}, 'x', undefined]) {
-      expectThrows('INVALID_CONFIG', { commands: { './A.js': { default: value }, './AHandler.js': { default: AH } } });
+      expectThrows('INVALID_CONFIG', {
+        commands: { './A.js': { default: value }, './AHandler.js': { default: AH } },
+      });
     }
     function F() {}
     for (const value of [class {}, F]) {
-      expect(zeg({ commands: { './A.js': { default: value }, './AHandler.js': { default: AH } } })).toBeUndefined();
+      expect(
+        zeg({ commands: { './A.js': { default: value }, './AHandler.js': { default: AH } } }),
+      ).toBeUndefined();
     }
   });
 
@@ -54,7 +69,9 @@ describe('4.4 zeg(): classes', () => {
       FH,
     ];
     for (const H of valid) {
-      expect(zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: H } } })).toBeUndefined();
+      expect(
+        zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: H } } }),
+      ).toBeUndefined();
     }
     const invalid = [
       class {},
@@ -71,14 +88,18 @@ describe('4.4 zeg(): classes', () => {
       { handle() {} },
     ];
     for (const H of invalid) {
-      expectThrows('INVALID_CONFIG', { commands: { './A.js': { default: A }, './AHandler.js': { default: H } } });
+      expectThrows('INVALID_CONFIG', {
+        commands: { './A.js': { default: A }, './AHandler.js': { default: H } },
+      });
     }
   });
 
   it('REQ-042 (section 2) prototype.handle must be a function', () => {
     function FX() {}
     FX.prototype.handle = 1;
-    expectThrows('INVALID_CONFIG', { commands: { './A.js': { default: A }, './AHandler.js': { default: FX } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './A.js': { default: A }, './AHandler.js': { default: FX } },
+    });
   });
 
   it('REQ-043 two message files cannot have the same message class', () => {
@@ -90,7 +111,9 @@ describe('4.4 zeg(): classes', () => {
       { commands: cmd, queries: cmd },
       { commands: { ...cmd, './B.js': { default: F }, './BHandler.js': { default: AH } } },
     ];
-    for (const options of cases) expectThrows('INVALID_CONFIG', options);
+    for (const options of cases) {
+      expectThrows('INVALID_CONFIG', options);
+    }
   });
 
   it('REQ-044 two handler files can have the same handler class', async () => {

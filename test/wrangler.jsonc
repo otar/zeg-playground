@@ -2,5 +2,5 @@
   // The Wrangler configuration of the unit tests. It has no "main" (docs/spec.md section 1.5, rule 2).
   // As a result, no Worker entry file runs, and each test file starts before any call to zeg().
   "name": "zeg-tests",
-  "compatibility_date": "2026-09-01"
+  "compatibility_date": "2026-09-01",
 }

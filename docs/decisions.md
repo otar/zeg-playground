@@ -145,6 +145,8 @@ To change a decision, change this file first. Then update the documents that ref
 ## Tooling (revision 5)
 
 - **D-73** The repository has no `.npmrc` file, so npm checks the peer dependencies of each package. `package.json` has no `overrides` field. `devDependencies` lists only the packages that the project uses directly. **(detail)** npm 10 cannot resolve the dependencies without a lockfile (background fact 19). For this reason, a change to the dependencies or to `package-lock.json` must use npm 11.6 or later. CI uses `npm ci`, which works with npm 10.
+- **D-74** Prettier formats the JavaScript, JSON, YAML and Markdown files. ESLint checks the JavaScript files and the JavaScript code blocks in the Markdown files. The ESLint rule `curly` with the option `all` requires braces for the body of each `if`, `else`, `for`, `while` and `do` statement (background fact 20).
+  - **(detail)** The layout has 2 spaces, single quotes, semicolons, trailing commas and a line width of 100. `npm run lint` checks the style, and `npm run lint:fix` corrects it. A static check runs the same tools, so `npm test` and CI fail if the style is not correct. `package.json` gives an exact version for Prettier, because a new version can change the layout.
 
 ## Background facts
 
@@ -169,6 +171,7 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 17. Each glob supplies file paths relative to the file that contains it. As a result, two globs in different files can supply the same file path. If a project merges them with `{ ...a, ...b }`, the merge loses entries, and no error occurs. In the lab, 6 files became 4 entries.
 18. The deep freeze of revision 2 needed 22 ms for a message with an array of 10,000 plain objects. This test ran in Node 22, which uses V8, the same engine as workerd. The Workers Free plan allows 10 ms of CPU time for each request. The deep-freeze code of the lab prototype was 128 bytes after minify and gzip.
 19. npm 10.9 stops with the error `Cannot read properties of null (reading 'edgesOut')` when it resolves the development dependencies without a lockfile. The cause is an optional peer dependency `vitest: "*"`. It comes from `vite` 8 through `@vitejs/devtools` and `@vitejs/devtools-vitest`. Since 2026-09-03, the range `*` selects vitest 5, and npm 10 then stops with this error. npm 11.6.0 contains the fix, but npm 10 does not. With an existing lockfile, `npm ci` and `npm install` work with npm 10.
+20. StandardJS, Airbnb and Google set the ESLint rule `curly` to `multi-line`. This setting allows `if (x) doSomething();`. Of the widely used style guides, only XO requires braces, but XO uses tabs and adds many other rules. Prettier does not add or remove braces. `eslint --fix` with `curly: 'all'` adds the braces safely. Biome marks the fix of its rule `useBlockStatements` as unsafe, and in a test this fix wrote a file that did not parse.
 
 ## History
 
@@ -186,3 +189,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 - **Revision 4** (phase 2): the spec showed that a build test cannot run in workerd, because it starts `vite` processes. Revision 4 limited D-68 to the unit tests. The build tests and the static checks run in Node. All IDs stay the same.
 - **Revision 5** (after phase 4): the user asked for three changes.
   - The repository no longer uses the npm setting `legacy-peer-deps`. Revision 5 added D-73 and background fact 19.
+  - The code has braces on all statements, and Prettier and ESLint check the style. Revision 5 added D-74 and background fact 20. The spec added REQ-134.

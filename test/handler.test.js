@@ -138,7 +138,9 @@ describe('4.8 dispatch: the handler', () => {
     class RH {
       async handle(m) {
         runs++;
-        if (m.n > 0) await command(new R(m.n - 1));
+        if (m.n > 0) {
+          await command(new R(m.n - 1));
+        }
       }
     }
     zeg({ commands: pairOf(R, RH, 'R') });

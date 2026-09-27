@@ -5,7 +5,11 @@ export const resetCalls = () => {
 };
 
 export function makePair(tag) {
-  const Message = class { constructor(v) { this.v = v; } };
+  const Message = class {
+    constructor(v) {
+      this.v = v;
+    }
+  };
   const Handler = class {
     handle(m) {
       calls.push([tag, m]);

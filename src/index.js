@@ -20,7 +20,9 @@ export class ZegError extends Error {
 const isObject = (value) => typeof value === 'object' && value !== null;
 
 const isPlainObject = (value) => {
-  if (!isObject(value)) return false;
+  if (!isObject(value)) {
+    return false;
+  }
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 };
@@ -31,11 +33,15 @@ const fail = (text) => {
 
 export function zeg(options) {
   // Z1
-  if (!isPlainObject(options)) fail('the options must be a plain object');
+  if (!isPlainObject(options)) {
+    fail('the options must be a plain object');
+  }
 
   // Z2
   for (const name of Reflect.ownKeys(options)) {
-    if (name !== 'commands' && name !== 'queries') fail(`unknown option ${String(name)}`);
+    if (name !== 'commands' && name !== 'queries') {
+      fail(`unknown option ${String(name)}`);
+    }
   }
 
   // Z3: for each kind, a list of [label, glob output]
@@ -48,7 +54,9 @@ export function zeg(options) {
         const label = `${kind}[${i}]`;
         // A hole reads as undefined, also if Array.prototype has a value at this index.
         const output = Object.hasOwn(value, i) ? value[i] : undefined;
-        if (!isPlainObject(output)) fail(`${label} must be a plain object`);
+        if (!isPlainObject(output)) {
+          fail(`${label} must be a plain object`);
+        }
         list.push([label, output]);
       }
     } else if (isPlainObject(value)) {
@@ -66,11 +74,17 @@ export function zeg(options) {
       const files = new Map();
       for (const path of Object.keys(output)) {
         const where = `${label} ${path}`;
-        if (!path.endsWith('.js')) fail(`${where}: the file path must end in .js`);
+        if (!path.endsWith('.js')) {
+          fail(`${where}: the file path must end in .js`);
+        }
         const module = output[path];
-        if (!isObject(module)) fail(`${where}: the module must be an object`);
+        if (!isObject(module)) {
+          fail(`${where}: the module must be an object`);
+        }
         const cls = module.default;
-        if (cls === undefined) fail(`${where}: the file has no default export`);
+        if (cls === undefined) {
+          fail(`${where}: the file has no default export`);
+        }
         const isHandler = path.endsWith('Handler.js');
         const proto = typeof cls === 'function' ? cls.prototype : undefined;
         if (isHandler) {
@@ -96,13 +110,26 @@ export function zeg(options) {
         if (path === 'Handler.js' || path.endsWith('/Handler.js')) {
           fail(`${file.where}: the file name has no message name before Handler.js`);
         }
-        if (!message) fail(`${file.where}: no message file ${messagePath}`);
-        if (message.isHandler) fail(`${file.where}: ${messagePath} is a handler file, not a message file`);
+        if (!message) {
+          fail(`${file.where}: no message file ${messagePath}`);
+        }
+        if (message.isHandler) {
+          fail(`${file.where}: ${messagePath} is a handler file, not a message file`);
+        }
       } else {
         const handlerPath = `${path.slice(0, -3)}Handler.js`;
         const handler = files.get(handlerPath);
-        if (!handler) fail(`${file.where}: no handler file ${handlerPath}`);
-        pairs.push({ kind, label, key: path.slice(0, -3), where: file.where, proto: file.proto, Handler: handler.cls });
+        if (!handler) {
+          fail(`${file.where}: no handler file ${handlerPath}`);
+        }
+        pairs.push({
+          kind,
+          label,
+          key: path.slice(0, -3),
+          where: file.where,
+          proto: file.proto,
+          Handler: handler.cls,
+        });
       }
     }
   }
@@ -111,13 +138,17 @@ export function zeg(options) {
   const seen = new Map();
   for (const pair of pairs) {
     const other = seen.get(pair.proto);
-    if (other) fail(`${other.where} and ${pair.where} have the same message class`);
+    if (other) {
+      fail(`${other.where} and ${pair.where} have the same message class`);
+    }
     seen.set(pair.proto, pair);
   }
 
   // Z7
   const next = { commands: new Map(), queries: new Map() };
-  for (const pair of pairs) next[pair.kind].set(pair.proto, pair);
+  for (const pair of pairs) {
+    next[pair.kind].set(pair.proto, pair);
+  }
   registry = next;
 }
 
@@ -132,11 +163,15 @@ async function dispatch(kind, message) {
     (proto = Object.getPrototypeOf(message)) === Object.prototype ||
     proto === null
   ) {
-    throw new TypeError(`${call}: the message must be an instance of a class, not an array or a plain object`);
+    throw new TypeError(
+      `${call}: the message must be an instance of a class, not an array or a plain object`,
+    );
   }
 
   // S3
-  if (!registry) throw new ZegError('NOT_CONFIGURED', `${call}: call zeg() first`);
+  if (!registry) {
+    throw new ZegError('NOT_CONFIGURED', `${call}: call zeg() first`);
+  }
 
   // S4
   const pair = registry[kind].get(proto);
@@ -154,9 +189,14 @@ async function dispatch(kind, message) {
   const value = await new pair.Handler().handle(message);
 
   // S8
-  if (kind === 'commands') return undefined;
+  if (kind === 'commands') {
+    return undefined;
+  }
   if (value === undefined) {
-    throw new ZegError('UNDEFINED_RESULT', `query(): the handler of ${pair.key} returned undefined`);
+    throw new ZegError(
+      'UNDEFINED_RESULT',
+      `query(): the handler of ${pair.key} returned undefined`,
+    );
   }
   return value;
 }

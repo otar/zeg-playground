@@ -6,6 +6,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:f
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -14,7 +15,10 @@ const EXAMPLE = join(ROOT, 'examples/basic-worker');
 // The child processes do not get the environment variables of Vitest. For example, NODE_ENV=test changes vite build.
 const ENV = { ...process.env, CI: '1', NO_COLOR: '1', WRANGLER_SEND_METRICS: 'false' };
 for (const name of Object.keys(ENV)) {
-  if (name.startsWith('VITEST') || ['NODE_ENV', 'TEST', 'MODE', 'DEV', 'PROD', 'SSR', 'BASE_URL'].includes(name)) {
+  if (
+    name.startsWith('VITEST') ||
+    ['NODE_ENV', 'TEST', 'MODE', 'DEV', 'PROD', 'SSR', 'BASE_URL'].includes(name)
+  ) {
     delete ENV[name];
   }
 }
@@ -22,11 +26,17 @@ for (const name of Object.keys(ENV)) {
 let dir;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const clean = (text) => text.replace(/\x1b\[[0-9;]*m/g, ''); // remove the color codes
+const clean = (text) => stripVTControlCharacters(text); // remove the color codes
 
 // Runs a command in the copy of the example and returns its output. Throws if the exit code is not 0.
 function run(command, args, timeout = 120_000) {
-  return execFileSync(command, args, { cwd: dir, env: ENV, encoding: 'utf8', stdio: 'pipe', timeout });
+  return execFileSync(command, args, {
+    cwd: dir,
+    env: ENV,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    timeout,
+  });
 }
 
 // An empty local database with the migration of the example. POST / inserts a@b.c, and the email is the primary key.
@@ -49,7 +59,9 @@ function freePort() {
 async function waitFor(condition, timeout) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
-    if (condition()) return true;
+    if (condition()) {
+      return true;
+    }
     await sleep(250);
   }
   return condition();
@@ -58,12 +70,16 @@ async function waitFor(condition, timeout) {
 // Starts `vite preview` or `vite dev` in its own process group.
 async function start(mode, args = []) {
   const port = await freePort();
-  const child = spawn(join(dir, 'node_modules/.bin/vite'), [mode, '--port', String(port), '--strictPort', ...args], {
-    cwd: dir,
-    env: ENV,
-    detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const child = spawn(
+    join(dir, 'node_modules/.bin/vite'),
+    [mode, '--port', String(port), '--strictPort', ...args],
+    {
+      cwd: dir,
+      env: ENV,
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   const server = { child, port, output: '', exited: false, url: `http://localhost:${port}` };
   const append = (data) => {
     server.output += clean(String(data));
@@ -112,7 +128,10 @@ async function checkRequests(args = []) {
       '{"name":"ZegError","code":"HANDLER_NOT_FOUND"}',
     ]);
     // The nested dispatch and the helper file write this line
-    expect(await waitFor(() => server.output.includes('welcome mail to a@b.c'), 10_000), server.output).toBe(true);
+    expect(
+      await waitFor(() => server.output.includes('welcome mail to a@b.c'), 10_000),
+      server.output,
+    ).toBe(true);
   } finally {
     await stop(server);
   }
@@ -132,7 +151,9 @@ beforeAll(() => {
 }, 600_000);
 
 afterAll(() => {
-  if (dir) rmSync(dir, { recursive: true, force: true });
+  if (dir) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 describe('4.12 build and runtime', () => {
@@ -145,7 +166,10 @@ describe('4.12 build and runtime', () => {
   it('REQ-121 the example Worker works after a minified build', async () => {
     // A copy of vite.config.js with build.minify set to true and no keepNames setting
     const config = readFileSync(join(dir, 'vite.config.js'), 'utf8');
-    const minified = config.replace('  plugins: [cloudflare()],\n', '  plugins: [cloudflare()],\n  build: { minify: true },\n');
+    const minified = config.replace(
+      '  plugins: [cloudflare()],\n',
+      '  plugins: [cloudflare()],\n  build: { minify: true },\n',
+    );
     expect(minified).not.toBe(config);
     expect(minified).not.toContain('keepNames');
     writeFileSync(join(dir, 'vite.config.min.js'), minified);
@@ -171,7 +195,14 @@ describe('4.12 build and runtime', () => {
           const end = Date.now() + 30_000;
           while (Date.now() < end) {
             const requests = [
-              [`${server.url}/`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"email":"o@b.c"}' }],
+              [
+                `${server.url}/`,
+                {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: '{"email":"o@b.c"}',
+                },
+              ],
               [`${server.url}/wrong-kind`, {}],
             ];
             for (const [url, init] of requests) {
@@ -187,8 +218,13 @@ describe('4.12 build and runtime', () => {
           }
           const results = [...new Set(statuses)].join(', ');
           const exited = server.exited ? 'the process stopped' : 'the process runs';
-          console.log(`REQ-122 vite ${mode}: ${statuses.length} requests, results: ${results}, after 30 s ${exited}`);
-          expect(statuses.filter((status) => status >= 200 && status < 300), `vite ${mode}`).toEqual([]);
+          console.log(
+            `REQ-122 vite ${mode}: ${statuses.length} requests, results: ${results}, after 30 s ${exited}`,
+          );
+          expect(
+            statuses.filter((status) => status >= 200 && status < 300),
+            `vite ${mode}`,
+          ).toEqual([]);
           expect(server.output, `vite ${mode}`).toContain('ZegError');
           expect(server.output, `vite ${mode}`).toContain('./commands/Orphan.js');
         } finally {

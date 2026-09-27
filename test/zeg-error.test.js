@@ -24,7 +24,9 @@ describe('4.11 ZegError', () => {
     zeg({ commands: cmd });
     const fromDispatch = await expectRejects('HANDLER_NOT_FOUND', command(new Q(1)));
     for (const error of [new ZegError('HANDLER_NOT_FOUND', 'text'), fromDispatch]) {
-      for (const key of Reflect.ownKeys(error)) expect(['stack', 'message', 'name', 'code']).toContain(key);
+      for (const key of Reflect.ownKeys(error)) {
+        expect(['stack', 'message', 'name', 'code']).toContain(key);
+      }
       expect('cause' in error).toBe(false);
     }
   });

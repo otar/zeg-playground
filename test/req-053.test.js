@@ -31,7 +31,12 @@ describe('REQ-053 the first call to zeg() that returns configures zeg', () => {
   });
 
   it('REQ-113 the ZegErrors of this file have known codes, also NOT_CONFIGURED', () => {
-    expect(seen.map((e) => e.code)).toEqual(['NOT_CONFIGURED', 'INVALID_CONFIG', 'NOT_CONFIGURED', 'HANDLER_NOT_FOUND']);
+    expect(seen.map((e) => e.code)).toEqual([
+      'NOT_CONFIGURED',
+      'INVALID_CONFIG',
+      'NOT_CONFIGURED',
+      'HANDLER_NOT_FOUND',
+    ]);
     checkSeen(['NOT_CONFIGURED', 'INVALID_CONFIG', 'HANDLER_NOT_FOUND']);
   });
 });

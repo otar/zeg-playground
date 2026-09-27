@@ -27,16 +27,24 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-023 the files of a pair must be in the same folder', () => {
-    expectThrows('INVALID_CONFIG', { commands: { './x/A.js': { default: A }, './y/AHandler.js': { default: AH } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './x/A.js': { default: A }, './y/AHandler.js': { default: AH } },
+    });
   });
 
   it('REQ-024 the file names of a pair must match exactly', () => {
-    expectThrows('INVALID_CONFIG', { commands: { './A.js': { default: A }, './aHandler.js': { default: AH } } });
-    expectThrows('INVALID_CONFIG', { commands: { './a.js': { default: A }, './AHandler.js': { default: AH } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './A.js': { default: A }, './aHandler.js': { default: AH } },
+    });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './a.js': { default: A }, './AHandler.js': { default: AH } },
+    });
   });
 
   it('REQ-025 pairs can be in subfolders', async () => {
-    zeg({ commands: { './billing/A.js': { default: A }, './billing/AHandler.js': { default: AH } } });
+    zeg({
+      commands: { './billing/A.js': { default: A }, './billing/AHandler.js': { default: AH } },
+    });
     const m = new A(1);
     await command(m);
     expectHandled('A', m);
@@ -55,25 +63,37 @@ describe('4.3 zeg(): files and pairs', () => {
     const b = new B(2);
     await command(a);
     await command(b);
-    expect(calls).toEqual([['A', a], ['B', b]]);
+    expect(calls).toEqual([
+      ['A', a],
+      ['B', b],
+    ]);
     expect(calls[0][1]).toBe(a);
     expect(calls[1][1]).toBe(b);
   });
 
   it('REQ-027 the files of a pair must be in the same glob output', () => {
-    expectThrows('INVALID_CONFIG', { commands: [{ './A.js': { default: A } }, { './AHandler.js': { default: AH } }] });
+    expectThrows('INVALID_CONFIG', {
+      commands: [{ './A.js': { default: A } }, { './AHandler.js': { default: AH } }],
+    });
   });
 
   it('REQ-028 a handler file named only Handler.js is not valid', () => {
     expectThrows('INVALID_CONFIG', { commands: { './Handler.js': { default: AH } } });
-    expectThrows('INVALID_CONFIG', { commands: { './.js': { default: A }, './Handler.js': { default: AH } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { './.js': { default: A }, './Handler.js': { default: AH } },
+    });
     // The same without a folder: the file name is the full path
-    expectThrows('INVALID_CONFIG', { commands: { '.js': { default: A }, 'Handler.js': { default: AH } } });
+    expectThrows('INVALID_CONFIG', {
+      commands: { '.js': { default: A }, 'Handler.js': { default: AH } },
+    });
   });
 
   it('REQ-029 only a file whose name ends in Handler.js is a handler file', async () => {
     const error = expectThrows('INVALID_CONFIG', {
-      commands: { './ErrorHandler.js': { default: AH }, './ErrorHandlerHandler.js': { default: AH } },
+      commands: {
+        './ErrorHandler.js': { default: AH },
+        './ErrorHandlerHandler.js': { default: AH },
+      },
     });
     expect(error.message).toContain('./ErrorHandler.js');
     const valid = [
@@ -83,7 +103,9 @@ describe('4.3 zeg(): files and pairs', () => {
     ];
     for (const [message, handler] of valid) {
       resetCalls();
-      expect(zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } })).toBeUndefined();
+      expect(
+        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+      ).toBeUndefined();
       const m = new A(1);
       await command(m);
       expectHandled('A', m);
@@ -97,7 +119,9 @@ describe('4.3 zeg(): files and pairs', () => {
     ];
     for (const [message, handler] of cases) {
       resetCalls();
-      expect(zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } })).toBeUndefined();
+      expect(
+        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+      ).toBeUndefined();
       const m = new A(1);
       await command(m);
       expectHandled('A', m);
@@ -118,7 +142,9 @@ describe('4.3 zeg(): files and pairs', () => {
     ];
     for (const [message, handler] of paths) {
       resetCalls();
-      expect(zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } })).toBeUndefined();
+      expect(
+        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+      ).toBeUndefined();
       const m = new A(1);
       await command(m);
       expectHandled('A', m);
@@ -127,7 +153,10 @@ describe('4.3 zeg(): files and pairs', () => {
 
   it('REQ-032 real glob outputs work: an eager glob with a negative pattern', async () => {
     const output = import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js'], { eager: true });
-    expect(Object.keys(output).sort()).toEqual(['./fixtures/queries/Ping.js', './fixtures/queries/PingHandler.js']);
+    expect(Object.keys(output).sort()).toEqual([
+      './fixtures/queries/Ping.js',
+      './fixtures/queries/PingHandler.js',
+    ]);
     expect(zeg({ queries: output })).toBeUndefined();
     expect(await query(new Ping())).toBe('pong');
   });
@@ -139,10 +168,14 @@ describe('4.3 zeg(): files and pairs', () => {
       './fixtures/queries/PingHandler.js',
       './fixtures/queries/_helper.js',
     ]);
-    for (const value of Object.values(output)) expect(typeof value).toBe('function');
+    for (const value of Object.values(output)) {
+      expect(typeof value).toBe('function');
+    }
     expectThrows('INVALID_CONFIG', { queries: output });
     // Also a lazy glob with the negative pattern
-    expectThrows('INVALID_CONFIG', { queries: import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js']) });
+    expectThrows('INVALID_CONFIG', {
+      queries: import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js']),
+    });
   });
 
   it('REQ-032 a second message file with a default export from another file throws INVALID_CONFIG', () => {
@@ -153,14 +186,18 @@ describe('4.3 zeg(): files and pairs', () => {
       './fixtures/reexport/Copy.js',
       './fixtures/reexport/CopyHandler.js',
     ]);
-    expect(output['./fixtures/reexport/Copy.js'].default).toBe(output['./fixtures/reexport/A.js'].default);
+    expect(output['./fixtures/reexport/Copy.js'].default).toBe(
+      output['./fixtures/reexport/A.js'].default,
+    );
     const error = expectThrows('INVALID_CONFIG', { commands: output });
     expect(error.message).toContain('./fixtures/reexport/A.js');
     expect(error.message).toContain('./fixtures/reexport/Copy.js');
   });
 
   it('REQ-033 a handler file cannot use a handler file as its message file', () => {
-    const error = expectThrows('INVALID_CONFIG', { commands: { ...cmd, './AHandlerHandler.js': { default: AH } } });
+    const error = expectThrows('INVALID_CONFIG', {
+      commands: { ...cmd, './AHandlerHandler.js': { default: AH } },
+    });
     expect(error.message).toContain('./AHandlerHandler.js');
   });
 

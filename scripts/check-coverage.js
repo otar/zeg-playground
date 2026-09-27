@@ -11,14 +11,22 @@ const errors = [];
 if (!entry) {
   errors.push('the coverage report does not contain src/index.js');
 } else {
-  if (!(entry.statements.total > 0)) errors.push('the coverage report contains 0 statements for src/index.js');
+  if (!(entry.statements.total > 0)) {
+    errors.push('the coverage report contains 0 statements for src/index.js');
+  }
   for (const metric of ['lines', 'branches', 'functions', 'statements']) {
-    if (entry[metric].pct !== 100) errors.push(`the ${metric} coverage of src/index.js is ${entry[metric].pct}%, not 100%`);
+    if (entry[metric].pct !== 100) {
+      errors.push(`the ${metric} coverage of src/index.js is ${entry[metric].pct}%, not 100%`);
+    }
   }
 }
 
 if (errors.length > 0) {
-  for (const error of errors) console.error(`REQ-131: ${error}`);
+  for (const error of errors) {
+    console.error(`REQ-131: ${error}`);
+  }
   process.exit(1);
 }
-console.log(`REQ-131: src/index.js has 100% coverage of ${entry.statements.total} statements and ${entry.branches.total} branches.`);
+console.log(
+  `REQ-131: src/index.js has 100% coverage of ${entry.statements.total} statements and ${entry.branches.total} branches.`,
+);

@@ -3,6 +3,6 @@
   "main": "./src/index.js",
   "compatibility_date": "2026-09-01",
   "d1_databases": [
-    { "binding": "DB", "database_name": "users", "database_id": "<your-database-id>" }
-  ]
+    { "binding": "DB", "database_name": "users", "database_id": "<your-database-id>" },
+  ],
 }

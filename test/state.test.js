@@ -2,7 +2,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command } from '@otar/zeg';
 import { A, AH, B, BH, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
-import { checkSeen, expectHandled, expectRejects, expectThrows, pairOf, settle, thrownBy } from './helpers.js';
+import {
+  checkSeen,
+  expectHandled,
+  expectRejects,
+  expectThrows,
+  pairOf,
+  settle,
+  thrownBy,
+} from './helpers.js';
 
 beforeEach(() => {
   resetCalls();
@@ -67,7 +75,9 @@ describe('4.5 zeg(): state and errors', () => {
   it('REQ-054 zeg() copies the entries of the glob outputs', async () => {
     const output = { ...cmd };
     zeg({ commands: output });
-    for (const key of Object.keys(output)) delete output[key];
+    for (const key of Object.keys(output)) {
+      delete output[key];
+    }
     const m = new A(1);
     await command(m);
     expectHandled('A', m);
@@ -101,10 +111,21 @@ describe('4.5 zeg(): state and errors', () => {
         { commands: Object.defineProperty([], 0, { enumerable: true, get: thrower }) },
         { commands: new Proxy([], { get: (t, k) => (k === 'length' ? thrower() : t[k]) }) },
         { commands: new Proxy({}, { ownKeys: thrower }) },
-        { commands: { './A.js': { get default() { return thrower(); } }, './AHandler.js': { default: AH } } },
         {
           commands: {
-            './A.js': { default: new Proxy(A, { get: (t, k) => (k === 'prototype' ? thrower() : t[k]) }) },
+            './A.js': {
+              get default() {
+                return thrower();
+              },
+            },
+            './AHandler.js': { default: AH },
+          },
+        },
+        {
+          commands: {
+            './A.js': {
+              default: new Proxy(A, { get: (t, k) => (k === 'prototype' ? thrower() : t[k]) }),
+            },
             './AHandler.js': { default: AH },
           },
         },
@@ -121,7 +142,9 @@ describe('4.5 zeg(): state and errors', () => {
           },
         },
       ];
-      for (const options of optionSets) expect(thrownBy(options)).toBe(v);
+      for (const options of optionSets) {
+        expect(thrownBy(options)).toBe(v);
+      }
     }
     const m = new A(1);
     await command(m);
@@ -132,7 +155,9 @@ describe('4.5 zeg(): state and errors', () => {
     const e1 = expectThrows('INVALID_CONFIG', { commands: [cmd, { './B.js': { default: B } }] });
     expect(e1.message).toContain('commands[1]');
     expect(e1.message).toContain('./B.js');
-    const e2 = expectThrows('INVALID_CONFIG', { commands: { ...cmd, './B.js': { default: A }, './BHandler.js': { default: AH } } });
+    const e2 = expectThrows('INVALID_CONFIG', {
+      commands: { ...cmd, './B.js': { default: A }, './BHandler.js': { default: AH } },
+    });
     expect(e2.message).toContain('./A.js');
     expect(e2.message).toContain('./B.js');
     const e3 = expectThrows('INVALID_CONFIG', { extra: 1 });

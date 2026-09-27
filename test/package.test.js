@@ -13,6 +13,8 @@ describe('4.1 package', () => {
     const names = Reflect.ownKeys(ns).filter((key) => typeof key === 'string');
     expect(names.sort()).toEqual(['ZegError', 'command', 'query', 'zeg']);
     expect('default' in ns).toBe(false);
-    for (const name of names) expect(typeof ns[name]).toBe('function');
+    for (const name of names) {
+      expect(typeof ns[name]).toBe('function');
+    }
   });
 });

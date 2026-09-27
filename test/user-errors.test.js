@@ -34,9 +34,12 @@ describe('4.10 dispatch: values that user code throws', () => {
   it('REQ-101 a value that is not an Error also reaches the caller unchanged', async () => {
     for (const v of ['x', 42, undefined]) {
       zeg({
-        commands: pairOf(A, returning(() => {
-          throw v;
-        })),
+        commands: pairOf(
+          A,
+          returning(() => {
+            throw v;
+          }),
+        ),
       });
       const r = await settle(command(new A(1)));
       expect(r.ok).toBe(false);
