@@ -183,11 +183,11 @@ describe('4.13 non-functional checks', () => {
     expect(existsSync(join(ROOT, 'scripts/check-coverage.js'))).toBe(true);
   });
 
-  it('REQ-133 CI runs all tests and checks', () => {
+  it('REQ-133 CI runs all tests and checks, except the mutation tests', () => {
     const workflow = read('.github/workflows/test.yml');
     expect(workflow).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]\n/m);
     expect(workflow).toMatch(/^ +node-version: 22$/m);
-    const runs = [...workflow.matchAll(/^ +- run: (.+)$/gm)].map((match) => match[1]);
+    const runs = [...workflow.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((match) => match[1]);
     expect(runs).toEqual(['npm ci', 'npm test', 'npm run coverage']);
 
     // `npm test` runs both projects: the unit tests, and the Node tests with the build tests, the static checks
@@ -197,9 +197,13 @@ describe('4.13 non-functional checks', () => {
     expect(scripts.coverage).toBe(
       'vitest run --project unit --coverage && node scripts/check-coverage.js',
     );
-    for (const file of ['build', 'static', 'size']) {
+    for (const file of ['build', 'static', 'size', 'lint']) {
       expect(existsSync(join(ROOT, `test/node/${file}.test.js`))).toBe(true);
     }
+
+    // The mutation tests have their own script, and the workflow does not run it (D-75).
+    expect(scripts['test:mutation']).toBe('stryker run');
+    expect(workflow).not.toMatch(/test:mutation|stryker/i);
   });
 });
 
@@ -213,5 +217,8 @@ describe('1.5 test environment', () => {
     for (const project of config.test.projects) {
       expect(project.test).not.toHaveProperty('setupFiles');
     }
+    // The mutation tests use only the unit project of this configuration.
+    const mutation = await import(pathToFileURL(join(ROOT, 'vitest.mutation.config.js')).href);
+    expect(mutation.default.test.projects).toEqual([config.test.projects[0]]);
   });
 });

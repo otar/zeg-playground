@@ -150,7 +150,7 @@ If the message is `null`, a primitive, a function, an array or a plain object, t
 To run the tests of zeg, do these steps in the repository root:
 
 1. Run `npm ci`.
-2. Run `npm test`. This command runs all tests and checks, except the coverage check. It also checks the style of the code (see below).
+2. Run `npm test`. This command runs all tests and checks, except the coverage check and the mutation tests. It also checks the style of the code (see below).
 3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/index.js` is 100%.
 
 The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The build tests and the static checks run in Node. The build tests install the packages of `examples/basic-worker/` in a temporary folder, so they need access to the npm registry. To run only the unit tests, run `npm run test:unit`.
@@ -163,6 +163,19 @@ Prettier sets the layout of the code. ESLint finds code that is hard to read or 
 - To correct the style, run `npm run lint:fix`.
 
 To change the dependencies, use npm 11.6 or later, for example `npx npm@11 install`. npm 10 cannot resolve the dependencies without a lockfile (background fact 19 in `docs/decisions.md`).
+
+### Mutation tests
+
+The mutation tests are optional, and GitHub Actions does not run them. Stryker makes small changes (mutants) in `src/index.js`. For each mutant, it runs the unit tests in workerd. If a test fails, the test kills the mutant. If no test fails, the mutant survives. A mutant that survives shows a gap in the tests.
+
+To run the mutation tests, do these steps:
+
+1. Run `npm run test:mutation`. The command needs approximately 3 minutes.
+2. Open `reports/mutation/mutation.html` in a browser.
+
+Some mutants that change only the error text survive, because the error text is not part of the API (D-54).
+
+To make the next runs faster, use `npm run test:mutation -- --incremental`. The first run with `--incremental` tests all mutants and writes `reports/stryker-incremental.json`. The next runs with `--incremental` test only the changed mutants and the mutants of the changed tests. Stryker does not see changes in the test helpers, the fixtures or the configuration. After such a change, run `npm run test:mutation` without `--incremental`.
 
 ## Documents
 

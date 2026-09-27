@@ -42,7 +42,8 @@ describe('4.4 zeg(): classes', () => {
   });
 
   it('REQ-041 a message class must be a function with a prototype object', () => {
-    for (const value of [() => {}, async function () {}, {}, 'x', undefined]) {
+    const invalid = [() => {}, async function () {}, {}, 'x', undefined, null, { prototype: {} }];
+    for (const value of invalid) {
       expectThrows('INVALID_CONFIG', {
         commands: { './A.js': { default: value }, './AHandler.js': { default: AH } },
       });

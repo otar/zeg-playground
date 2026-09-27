@@ -30,12 +30,15 @@
     "test:node": "vitest run --project node",
     "coverage": "vitest run --project unit --coverage && node scripts/check-coverage.js",
     "lint": "eslint --max-warnings 0 . && prettier --check .",
-    "lint:fix": "eslint --fix . && prettier --write ."
+    "lint:fix": "eslint --fix . && prettier --write .",
+    "test:mutation": "stryker run"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.2.8",
     "@eslint/js": "^10.0.1",
     "@eslint/markdown": "^8.0.3",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@vitest/coverage-istanbul": "^4.1.11",
     "esbuild": "^0.28.2",
     "eslint": "^10.11.0",

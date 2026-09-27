@@ -1,0 +1,5 @@
+# GitHub reads this file and ignores these commits in its blame view.
+# To make git blame on the command line ignore them, run: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: braces on all statements, Prettier and ESLint
+df10be10516f57ed905043eecbc8bbe9f309a69c

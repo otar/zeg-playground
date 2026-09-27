@@ -84,7 +84,7 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 5. The tests of REQ-053, REQ-060 and REQ-062 need a module state without a call to `zeg()`. Each of these requirements has its own test file. Each such file runs its scenarios in the order of the requirement.
 6. The tests in one file run one after the other. They do not use `.concurrent`.
 7. The build tests (type B) and the static checks (types S and N) run in Node, because they start processes and read files [D-68].
-8. The unit tests and the Node tests are two projects of one Vitest configuration.
+8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration [D-75].
 
 ## 2. The steps of zeg()
 
@@ -454,7 +454,7 @@ Source: D-13, D-37. Test: U.
 
 Source: D-20, D-37. Test: U.
 
-- Given each of these values as the default export of `./A.js`: `() => {}`, `async function () {}`, `{}`, `'x'`, `undefined`
+- Given each of these values as the default export of `./A.js`: `() => {}`, `async function () {}`, `{}`, `'x'`, `undefined`, `null`, `{ prototype: {} }`
 - When the test calls `zeg()` with that file and `./AHandler.js`
 - Then the call throws `INVALID_CONFIG`
 - Given a class, and then a function declared with `function`, as the default export of `./A.js`
@@ -1014,15 +1014,16 @@ Source: D-71. Test: N.
 - When a check runs `esbuild --minify --format=esm` and then `gzip -9` on it
 - Then the result is 1536 bytes or less
 
-#### REQ-133 CI runs all tests and checks
+#### REQ-133 CI runs all tests and checks, except the mutation tests
 
-Source: D-72. Test: S.
+Source: D-72, D-75. Test: S.
 
 - Given the workflow file in `.github/workflows/`
 - When a static check reads it
 - Then it runs on a push to `main` and uses Node 22
 - And it runs the unit tests, the build tests and the static checks
 - And it runs the coverage check and the size check
+- And it does not run the mutation tests (`npm run test:mutation`)
 
 #### REQ-134 The code follows the style rules
 
@@ -1135,3 +1136,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-72 | REQ-133 |
 | D-73 | Development setup only |
 | D-74 | REQ-134 |
+| D-75 | REQ-133 |
