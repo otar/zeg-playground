@@ -26,7 +26,7 @@ To change a decision, change this file first. Then update the documents that ref
 ## Scope
 
 - **D-01** Version 1 contains only `zeg()`, `command()`, `query()` and `ZegError`. It has no middleware, no events and no Cloudflare Queues support.
-- **D-02** The package exports exactly four names: `zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export.
+- **D-02** The package exports exactly four names: `zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type name `GlobOutput` (D-76). This name is only in a comment. It is not a value, so it is not a fifth export.
 - **D-03** The library code imports no modules. It uses only standard JavaScript. **(detail)** As a result, it imports no `node:*` module and no `cloudflare:*` module.
 
 ## API model
@@ -119,7 +119,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-55** The name of the library is zeg. The npm package is `@otar/zeg`.
 - **D-56** `package.json` has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
-- **D-57** The package has no build step and no type declarations.
+- **D-57** The package has no build step and no type declarations. **(detail)** The JSDoc types in the docblocks (D-76) are comments. They are not type declarations, and the package has no `.d.ts` file.
 - **D-58** The license is MIT, with `Copyright (c) 2026 Otar Chekurishvili`.
 - **D-59** The README lists the tested versions: Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
 - **D-60** The library is at the root of the repository. The package manager is npm.
@@ -150,6 +150,13 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-75** The mutation tests are optional, and CI does not run them. `npm run test:mutation` fails if the mutation score is below 100%. `npm run test:mutation` runs Stryker with `@stryker-mutator/vitest-runner` (background fact 21). Stryker changes only `src/zeg.js`, and it runs only the unit tests, in workerd.
   - **(detail)** `vitest.mutation.config.js` contains only the unit project of `vitest.config.js`. For each mutant, Stryker runs only the unit tests that cover the mutant. The REQ-113 tests depend on the order of the tests in their file, but they cover no mutant. The report is `reports/mutation/mutation.html`, and the temporary copies are in `.stryker-tmp/`. Git, Prettier and ESLint ignore the two folders.
 
+## Docblocks (revision 6)
+
+- **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc type `GlobOutput`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. A static check makes sure that each export has a docblock.
+  - **(detail)** esbuild removes the docblocks in a minified build, so they do not change the size of D-71. For this reason, no comment in `src/zeg.js` contains `@license`, `@preserve` or `/*!`, because esbuild keeps such comments.
+  - **(detail)** The example of a docblock does not contain `*/`, because `*/` ends the comment. For example, the glob pattern `./commands/**/*.js` contains `*/`.
+- **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code.
+
 ## Background facts
 
 The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8.3.1 with Rolldown 1.2.11, `@cloudflare/vite-plugin` 1.60.2, Vitest 4.1.11, `@cloudflare/vitest-plugin` 1.2.8 and workerd 1.20260925.1. The tests ran in local workerd. They did not run on a Cloudflare deployment.
@@ -176,6 +183,11 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 20. StandardJS, Airbnb and Google set the ESLint rule `curly` to `multi-line`. This setting allows `if (x) doSomething();`. Of the widely used style guides, only XO requires braces, but XO uses tabs and adds many other rules. Prettier does not add or remove braces. `eslint --fix` with `curly: 'all'` adds the braces safely. Biome marks the fix of its rule `useBlockStatements` as unsafe, and in a test this fix wrote a file that did not parse.
 21. Stryker 10.0.0 with `@stryker-mutator/vitest-runner` runs the unit tests in workerd, because `@cloudflare/vitest-plugin` sets its own test pool. This runner always selects the tests for each mutant by coverage, and the setting `coverageAnalysis` has no effect on it. The command runner of Stryker does not work with workerd, because the active mutant does not reach workerd. With it, all mutants survive. On 2026-09-28, Stryker made 200 mutants of `src/zeg.js`, and the tests killed all 200 (a mutation score of 100%). The run needed 2 minutes.
 22. Vite 8.3.1 supports the option `base` of `import.meta.glob`. With `base`, each file path of the glob output is relative to the base folder, for example `./RegisterUser.js` and `./billing/ChargeCard.js`. The base folder must start with `/`, `./` or `../`. A base folder that starts with `./` or `../` is relative to the file that contains the glob. A base folder that starts with `/` is relative to the project root. Vite 8.3.1 has two implementations of the glob transform: one for `vite dev` and Vitest, and one in Rolldown for a build. The lab got the same file paths in `vite dev`, in a Vite build and in Vitest with workerd. On 2026-09-28, the example Worker with the folders and the globs of `docs/syntax.md` section 3.9 worked in `vite dev` and in `vite preview` after a build, without a change to the library.
+23. TypeScript 7.0.2 is a native build of TypeScript. The lab compared it with TypeScript 6.0.3 in projects that import a copy of zeg with docblocks.
+    - A TypeScript 7 editor shows the docblocks of the package only if the project has a `jsconfig.json` or a `tsconfig.json`, also an empty one. A TypeScript 6 editor shows them without such a file.
+    - A strict TypeScript project gets the error `TS7016 Could not find a declaration file for module '@otar/zeg'`, because the package has no `.d.ts` file (D-57).
+    - In a project with `checkJs`, TypeScript 7 reports `command('RegisterUser')` (TS2345) and an unknown option of `zeg()` (TS2353). TypeScript 6 reports TS2345 only with `noImplicitAny` on. No version finds a lazy glob. `zeg()` finds it at runtime.
+    - esbuild 0.28 removes the docblocks in a minified build, so the size of the build does not change.
 
 ## History
 
@@ -195,9 +207,10 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The repository no longer uses the npm setting `legacy-peer-deps`. Revision 5 added D-73 and background fact 19.
   - The code has braces on all statements, and Prettier and ESLint check the style. Revision 5 added D-74 and background fact 20. The spec added REQ-134.
   - The repository has optional mutation tests with Stryker. Revision 5 added D-75 and background fact 21, and it changed D-72. The spec changed REQ-133 and rule 8 of section 1.5. The mutation tests found a gap in the test of REQ-041, so REQ-041 now also lists `null` and `{ prototype: {} }`.
-- **Revision 6** (after revision 5): the user asked for six changes.
+- **Revision 6** (after revision 5): the user asked for changes in five topics: the mutation score, the folders of the handler files, a simpler code, the name of the library file and docblocks.
   - The library file `src/index.js` became `src/zeg.js`, because `index.js` is also the name of the Worker entry file of a user project and of the example. This changed D-56, D-63 (a note), D-70, D-71, D-75 and background fact 21. The spec changed rule 4 and rule 8 of section 1.5, REQ-002, REQ-003, REQ-006, REQ-131, REQ-132 and spec detail 24. In `docs/syntax.md` section 3.8, the glob files of the feature folders became `globs.js`.
   - The REQ-122 build test stops when the Vite process stops, because a stopped process cannot answer. The spec changed REQ-122.
   - A simpler `src/zeg.js` with the same behavior: one registry Map for both kinds, one list of glob outputs, and the check of Z6 in the loop of Z5. The spec changed the notes of section 2 and the S4 row.
   - The tests check the start of each error text, and `npm run test:mutation` fails below a mutation score of 100%. `src/zeg.js` no longer has a separate check for a file without a default export, and it calculates each key one time. This changed D-17, D-75 and background fact 21. The spec changed rule 8 of section 1.5, REQ-056, REQ-061, REQ-113 and spec detail 20, and it added spec detail 25.
   - The handler files can be in a separate folder, for example `src/command-handlers/`, without a change to the library. A project uses two globs with the Vite option `base` and merges the two glob outputs with a spread (`docs/syntax.md` section 3.9). This changed D-11 and added background fact 22. The spec added REQ-034 and the fixtures in `test/fixtures/split/`.
+  - Each export has a JSDoc docblock, and TypeScript 7 checks the docblocks. `command()` and `query()` became function declarations. The type check found a type mismatch in Z2: `KINDS.includes()` got a symbol. Z2 now converts each option name to a text first, and the behavior did not change. This added D-76, D-77 and background fact 23, and it added details to D-02 and D-57. The development dependencies now include `typescript`. The spec added REQ-135 and REQ-136.

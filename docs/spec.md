@@ -1066,6 +1066,25 @@ Source: D-74. Test: S.
 - And its only override gives Markdown files the compact table form (`proseWrap: never`)
 - And `package.json` gives an exact version for `prettier`
 
+#### REQ-135 Each export has a docblock
+
+Source: D-76. Test: S.
+
+- Given `src/zeg.js`
+- When a static check reads it
+- Then it has exactly four lines that start with `export`: the class `ZegError` and the functions `zeg`, `command` and `query`
+- And a JSDoc comment (`/** ... */`) comes directly before each of these lines
+- And no comment contains `@license`, `@preserve` or `/*!`
+
+#### REQ-136 The docblocks pass the type check
+
+Source: D-77. Test: S.
+
+- Given `jsconfig.json` with only the file `src/zeg.js`, `checkJs` and `noEmit` on, and `strict` off
+- And `devDependencies` contains `typescript` with a version range that starts with `^7.`
+- When a static check runs `tsc -p jsconfig.json`
+- Then the command ends with the exit code 0 and writes no output
+
 ## 5. Spec details for approval
 
 These rules come from this spec, not from a decision. When the user approves phase 2, the user also approves them.
@@ -1160,3 +1179,5 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-73 | Development setup only |
 | D-74 | REQ-134 |
 | D-75 | REQ-133 |
+| D-76 | REQ-135 |
+| D-77 | REQ-136 |

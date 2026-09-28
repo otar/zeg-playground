@@ -109,6 +109,15 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 | `query(message)` | Dispatches a query. Returns a Promise that resolves to the value from the handler. |
 | `ZegError` | The error class of zeg. It has the properties `name` (`'ZegError'`), `code` and `message`. |
 
+### Types in the editor
+
+`src/zeg.js` has JSDoc docblocks for the four exports. An editor shows their descriptions and types. The package has no `.d.ts` file.
+
+- A TypeScript 7 editor shows the docblocks only if the project has a `jsconfig.json` or a `tsconfig.json`. An empty file (`{}`) is sufficient.
+- A strict TypeScript project gets the error `TS7016` for `@otar/zeg`, because the package has no type declarations.
+- In a JavaScript project with `checkJs`, the editor shows some incorrect calls, for example `command('RegisterUser')`. zeg also does all its checks at runtime.
+- The result type of `query()` is `unknown`. To set a type in JavaScript, write `/** @type {User} */` before the variable.
+
 ## Rules
 
 Rules for the files:
@@ -151,7 +160,7 @@ If the message is `null`, a primitive, a function, an array or a plain object, t
 To run the tests of zeg, do these steps in the repository root:
 
 1. Run `npm ci`.
-2. Run `npm test`. This command runs all tests and checks, except the coverage check and the mutation tests. It also checks the style of the code (see below).
+2. Run `npm test`. This command runs all tests and checks, except the coverage check and the mutation tests. It also checks the style of the code (see below) and the types in the docblocks, with TypeScript 7.
 3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/zeg.js` is 100%.
 
 The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The build tests and the static checks run in Node. The build tests install the packages of `examples/basic-worker/` in a temporary folder, so they need access to the npm registry. To run only the unit tests, run `npm run test:unit`.

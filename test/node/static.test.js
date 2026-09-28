@@ -207,6 +207,41 @@ describe('4.13 non-functional checks', () => {
   });
 });
 
+describe('4.13 docblocks and the type check', () => {
+  it('REQ-135 each export of src/zeg.js has a docblock', () => {
+    const source = read('src/zeg.js');
+    const exports = [...source.matchAll(/^export .*$/gm)];
+    expect(exports.map((match) => match[0].match(/^export (?:class|function) (\w+)/)?.[1])).toEqual(
+      ['ZegError', 'zeg', 'command', 'query'],
+    );
+    for (const match of exports) {
+      expect(source.slice(0, match.index), match[0]).toMatch(/\/\*\*(?:(?!\*\/)[\s\S])*\*\/\n$/);
+    }
+    // esbuild keeps these comments in a minified build (D-76).
+    expect(source).not.toMatch(/@license|@preserve|\/\*!/);
+  });
+
+  it('REQ-136 the docblocks pass the type check of TypeScript 7', () => {
+    expect(readJson('package.json').devDependencies.typescript).toMatch(/^\^7\./);
+    const config = readJsonc('jsconfig.json');
+    expect(config.files).toEqual(['src/zeg.js']);
+    expect(config.compilerOptions).toMatchObject({ checkJs: true, noEmit: true, strict: false });
+    let result;
+    try {
+      const tsc = join(ROOT, 'node_modules/typescript/bin/tsc');
+      const output = execFileSync(process.execPath, [tsc, '-p', 'jsconfig.json'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+      result = { code: 0, output };
+    } catch (error) {
+      result = { code: error.status, output: `${error.stdout}${error.stderr}` };
+    }
+    expect(result).toEqual({ code: 0, output: '' });
+  });
+});
+
 describe('1.5 test environment', () => {
   it('1.5 rules 2, 3 and 8: two projects, no main in the test Wrangler configuration, no setup file', async () => {
     const { default: config } = await import(pathToFileURL(join(ROOT, 'vitest.config.js')).href);
