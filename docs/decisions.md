@@ -153,7 +153,7 @@ To change a decision, change this file first. Then update the documents that ref
 ## Docblocks (revision 6)
 
 - **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc type `GlobOutput`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. A static check makes sure that each export has a docblock.
-  - **(detail)** esbuild removes the docblocks in a minified build, so they do not change the size of D-71. For this reason, no comment in `src/zeg.js` contains `@license`, `@preserve` or `/*!`, because esbuild keeps such comments.
+  - **(detail)** esbuild removes the docblocks in a minified build, so they do not change the size of D-71. For this reason, no comment in `src/zeg.js` contains `@license`, `@preserve`, `/*!` or `//!`, because esbuild keeps such comments.
   - **(detail)** The example of a docblock does not contain `*/`, because `*/` ends the comment. For example, the glob pattern `./commands/**/*.js` contains `*/`.
 - **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code.
 

@@ -179,6 +179,12 @@ describe('4.5 zeg(): state and errors', () => {
     expect(thrownBy({ commands: [unpaired, throwing] })).toBe(e);
     expectThrows('INVALID_CONFIG', { commands: badPath, queries: throwing });
     expectThrows('INVALID_CONFIG', { commands: throwing, queries: 'x' });
+    // Z5 before Z6: commands[0] and commands[1] have the same message class, and commands[2] has no pair.
+    const error = expectThrows('INVALID_CONFIG', {
+      commands: [cmd, cmd, { './X.js': { default: B } }],
+    });
+    expect(error.message).toContain('commands[2]');
+    expect(error.message).toContain('./X.js');
   });
 
   it('REQ-113 the ZegErrors of this file have known codes', () => {

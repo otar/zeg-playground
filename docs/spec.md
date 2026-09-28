@@ -623,6 +623,8 @@ Source: D-37, D-39. Test: U.
 - Then the call throws `INVALID_CONFIG`, because `zeg()` reads `commands` before `queries`
 - When the test calls `zeg({ commands: throwing, queries: 'x' })`
 - Then the call throws `INVALID_CONFIG`, because Z3 checks both options before Z4 reads a glob output
+- When the test calls `zeg({ commands: [cmd, cmd, { './X.js': { default: B } }] })`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `commands[2]` and `./X.js`, because a failed check of Z5 comes before a failed check of Z6
 
 ### 4.6 Dispatch: the message
 
@@ -1075,7 +1077,7 @@ Source: D-76. Test: S.
 - When a static check reads it
 - Then it has exactly four lines that start with `export`: the class `ZegError` and the functions `zeg`, `command` and `query`
 - And a docblock (`/** ... */`) comes directly before each of these lines
-- And no comment contains `@license`, `@preserve` or `/*!`
+- And no comment contains `@license`, `@preserve`, `/*!` or `//!`
 
 #### REQ-136 The docblocks pass the type check
 

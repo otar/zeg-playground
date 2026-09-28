@@ -34,7 +34,7 @@ let registry = null;
  */
 export class ZegError extends Error {
   /**
-   * @param {string} code The error code. The constructor does not check it.
+   * @param {string} code The error code. The constructor does not check it at runtime.
    * @param {string} [message] The error text.
    */
   constructor(code, message) {
@@ -249,8 +249,9 @@ async function dispatch(kind, message) {
  * @returns {Promise<undefined>} Resolves to `undefined` when `handle()` is complete. Rejects with
  *   a `TypeError` if the message is not an object, or if it is `null`, a function, an array or a
  *   plain object. Rejects with a `ZegError` with the code `NOT_CONFIGURED` or `HANDLER_NOT_FOUND`
- *   if zeg cannot find the handler. If the handler constructor or `handle()` throws a value, or
- *   if the Promise from `handle()` rejects, rejects with the same value.
+ *   if zeg cannot find the handler. If a step of the dispatch throws a value, rejects with the
+ *   same value. Examples are a Proxy trap of the message, the handler constructor and the call of
+ *   `handle()`. If the Promise from `handle()` rejects, rejects with the same value.
  * @example
  * await command(new RegisterUser('a@b.c'));
  */

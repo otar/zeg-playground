@@ -1,6 +1,6 @@
 // Static checks (type S) of docs/spec.md. They read, list or bundle files, and they do not run the library.
 // They run in Node (section 1.5, rule 7).
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -218,7 +218,7 @@ describe('4.13 docblocks and the type check', () => {
       expect(source.slice(0, match.index), match[0]).toMatch(/\/\*\*(?:(?!\*\/)[\s\S])*\*\/\n$/);
     }
     // esbuild keeps these comments in a minified build (D-76).
-    expect(source).not.toMatch(/@license|@preserve|\/\*!/);
+    expect(source).not.toMatch(/@license|@preserve|\/\*!|\/\/!/);
   });
 
   it('REQ-136 the docblocks pass the type check of TypeScript 7', () => {
@@ -226,19 +226,12 @@ describe('4.13 docblocks and the type check', () => {
     const config = readJsonc('jsconfig.json');
     expect(config.files).toEqual(['src/zeg.js']);
     expect(config.compilerOptions).toMatchObject({ checkJs: true, noEmit: true, strict: false });
-    let result;
-    try {
-      const tsc = join(ROOT, 'node_modules/typescript/bin/tsc');
-      const output = execFileSync(process.execPath, [tsc, '-p', 'jsconfig.json'], {
-        cwd: ROOT,
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
-      result = { code: 0, output };
-    } catch (error) {
-      result = { code: error.status, output: `${error.stdout}${error.stderr}` };
-    }
-    expect(result).toEqual({ code: 0, output: '' });
+    const tsc = join(ROOT, 'node_modules/typescript/bin/tsc');
+    const { status, stdout, stderr } = spawnSync(process.execPath, [tsc, '-p', 'jsconfig.json'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+    expect({ status, stdout, stderr }).toEqual({ status: 0, stdout: '', stderr: '' });
   });
 });
 
