@@ -1,5 +1,5 @@
 {
-  // The type check of the docblocks in src/zeg.js (D-77). test/node/types.test.js runs tsc with this file.
+  // The type check of the docblocks in src/zeg.js (D-77). test/node/static.test.js runs tsc with this file.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

@@ -12,7 +12,7 @@ export const seen = [];
 // The start of each error text of zeg: the name of the function, then a description (REQ-061, REQ-113).
 export const TEXT_START = /^(zeg|command|query)\(\): \S/;
 
-// REQ-113: a ZegError from zeg has a known code, and its message starts with TEXT_START.
+// REQ-113: a ZegError from zeg has a known code, and its error text starts with TEXT_START.
 export function checkKnown(error) {
   expect(error).toBeInstanceOf(ZegError);
   expect(CODES).toContain(error.code);

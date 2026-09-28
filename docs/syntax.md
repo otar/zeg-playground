@@ -326,7 +326,7 @@ zeg({ commands: [userCommands, billingCommands] });
 // export default { fetch } as in section 3.7
 ```
 
-Do not merge such glob outputs with `{ ...userCommands, ...billingCommands }`. Each glob supplies paths relative to its own file. If both folders contain a file with the same name, both globs supply the same path, for example `./commands/RegisterUser.js`. The merge then loses entries, and `zeg()` does not throw. A later dispatch of a lost message class rejects with `HANDLER_NOT_FOUND` (background fact 17).
+Do not merge such glob outputs with `{ ...userCommands, ...billingCommands }`. Without the option `base`, each glob supplies file paths relative to its own file. If both folders contain a file with the same name, both globs supply the same path, for example `./commands/RegisterUser.js`. The merge then loses entries, and `zeg()` does not throw. A later dispatch of a lost message class rejects with `HANDLER_NOT_FOUND` (background fact 17).
 
 A message file and its handler file must be in the same glob output [D-11].
 
@@ -382,7 +382,7 @@ zeg({
 // export default { fetch } as in section 3.7
 ```
 
-With the option `base`, each file path in the glob output is relative to the base folder (background fact 22). For example, the file path of `src/commands/billing/ChargeCard.js` is `./billing/ChargeCard.js`, and the file path of `src/command-handlers/billing/ChargeCardHandler.js` is `./billing/ChargeCardHandler.js`. As a result, zeg finds the pairs as in the other sections [D-11]. A base folder that starts with `./` or `../` is relative to the file that contains the glob.
+With the option `base`, each file path in the glob output is relative to the base folder (background fact 22). A pattern that starts with `./` is also relative to the base folder. For example, `'./**/*.js'` with `base: './commands'` finds only the files in `src/commands/`. For example, the file path of `src/commands/billing/ChargeCard.js` is `./billing/ChargeCard.js`, and the file path of `src/command-handlers/billing/ChargeCardHandler.js` is `./billing/ChargeCardHandler.js`. As a result, zeg finds the pairs as in the other sections [D-11]. A base folder that starts with `./` or `../` is relative to the file that contains the glob.
 
 Obey these rules:
 
@@ -392,7 +392,7 @@ Obey these rules:
 
 The handler glob does not find `_email.js`, because its name does not end in `Handler.js`. A handler file imports a message class with a path relative to its own folder, for example `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
 
-`zeg()` does the same checks as for one glob. For example, if `src/commands/Refund.js` has no handler file, `zeg()` throws `INVALID_CONFIG`. The error text contains the file paths relative to the base folder, for example `zeg(): commands ./Refund.js: no handler file ./RefundHandler.js`. The text does not contain the name of the folder.
+`zeg()` does the same checks as for one glob. For example, if `src/commands/Refund.js` has no handler file, `zeg()` throws `INVALID_CONFIG`. The error text contains the file paths relative to the base folder, for example `zeg(): commands ./Refund.js: no handler file ./RefundHandler.js`. The file paths in the error text do not contain the base folder `./commands`.
 
 ## 4. API
 

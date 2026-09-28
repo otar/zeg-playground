@@ -63,7 +63,7 @@ const fail = (text) => {
 /**
  * Sets the pairs of message classes and handler classes. Each call replaces all pairs.
  *
- * `zeg()` checks all options before it changes the pairs. If a check fails, the pairs of the
+ * `zeg()` checks all options before it changes the pairs. If `zeg()` throws, the pairs of the
  * previous call stay active.
  *
  * @param {object} options The glob outputs of the command files and the query files.
@@ -71,8 +71,8 @@ const fail = (text) => {
  * @param {GlobOutput | GlobOutput[]} [options.queries] The query files.
  * @returns {undefined}
  * @throws {ZegError} With the code `INVALID_CONFIG` if the options, the files, the pairs or the
- *   classes are not valid. If a getter or a Proxy in the options throws a value, `zeg()` throws
- *   the same value.
+ *   classes are not valid. If user code throws a value while `zeg()` reads the options, `zeg()`
+ *   throws the same value. Examples are a getter, a Proxy or a module in an import cycle.
  * @example
  * zeg({
  *   commands: import.meta.glob('./commands/*.js', { eager: true }),
@@ -249,8 +249,8 @@ async function dispatch(kind, message) {
  * @returns {Promise<undefined>} Resolves to `undefined` when `handle()` is complete. Rejects with
  *   a `TypeError` if the message is not an object, or if it is `null`, a function, an array or a
  *   plain object. Rejects with a `ZegError` with the code `NOT_CONFIGURED` or `HANDLER_NOT_FOUND`
- *   if zeg cannot find the handler. If the handler class or `handle()` throws a value, rejects
- *   with the same value.
+ *   if zeg cannot find the handler. If the handler constructor or `handle()` throws a value, or
+ *   if the Promise from `handle()` rejects, rejects with the same value.
  * @example
  * await command(new RegisterUser('a@b.c'));
  */

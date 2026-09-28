@@ -112,7 +112,6 @@ The rules for the classes (Z4):
 - The default export of a message file must be a function whose `prototype` is an object [D-20]. If the default export is `undefined`, the file has no default export.
 - The default export of a handler file must be a function, and its `prototype.handle` must be a function [D-19].
 - Z4 reads the `prototype` of each message class one time. Z6 and Z7 use that value.
-- The implementation can do the check of Z6 in the same loop as Z5. A failed check of Z5 still comes before a failed check of Z6.
 
 The rules for the pairs (Z5):
 
@@ -121,6 +120,7 @@ The rules for the pairs (Z5):
 
 Other rules:
 
+- The implementation can do the check of Z6 in the same loop as Z5. A failed check of Z5 still comes before a failed check of Z6.
 - **(spec detail)** A hole in an array reads as `undefined`. As a result, `zeg()` throws `INVALID_CONFIG` for it.
 - **(spec detail)** `zeg()` reads the file paths of a glob output with `Object.keys()`. As a result, it reads only own, enumerable properties whose names are strings.
 - **(spec detail)** If user code throws a value while `zeg()` reads a value, `zeg()` throws that same value. Examples of user code are a getter, a Proxy trap or a module in an import cycle. The registry does not change. In an import cycle, a read of the default export can throw a `ReferenceError`. D-25 describes the other possible result, `undefined` values.
@@ -647,7 +647,7 @@ Source: D-27, D-45. Test: U.
 - And each of these values: `undefined`, `null`, `1`, `'x'`, `true`, `Symbol()`, `1n`, `() => {}`, `A` (the class itself), `[]`, `{}`, `Object.create(null)`
 - When the test calls `command(value)` and `query(value)`
 - Then each Promise rejects with a `TypeError`, which is not a `ZegError`
-- **(spec detail)** And the text of the `TypeError` starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
+- **(spec detail)** And the error text of the `TypeError` starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
 
 #### REQ-062 The check of the message comes before the NOT_CONFIGURED check
 
@@ -998,7 +998,8 @@ Source: D-38, D-69. Test: B.
 - Given a copy of the example with the added file `src/commands/Orphan.js`, which has a default class and no handler file
 - When the test runs `vite build`, and then tries to start the Worker with `vite preview` and with `vite dev`
 - Then `vite build` succeeds
-- And for `vite preview` and for `vite dev`, the console output of the process contains `ZegError`, and no HTTP request to the Worker succeeds within 30 seconds, or before the process stops
+- And for `vite preview` and for `vite dev`, the console output of the process contains `ZegError`
+- And no HTTP request to the Worker succeeds within 30 seconds, or before the process stops
 
 #### REQ-123 The example Worker needs no compatibility flags
 
@@ -1073,7 +1074,7 @@ Source: D-76. Test: S.
 - Given `src/zeg.js`
 - When a static check reads it
 - Then it has exactly four lines that start with `export`: the class `ZegError` and the functions `zeg`, `command` and `query`
-- And a JSDoc comment (`/** ... */`) comes directly before each of these lines
+- And a docblock (`/** ... */`) comes directly before each of these lines
 - And no comment contains `@license`, `@preserve` or `/*!`
 
 #### REQ-136 The docblocks pass the type check
@@ -1108,12 +1109,12 @@ These rules come from this spec, not from a decision. When the user approves pha
 17. The hint in the error text contains the literal text `command()` or `query()` (REQ-073).
 18. `command()` and `query()` return a native `Promise` (REQ-060).
 19. `new ZegError(code)` without a second argument has the `message` `''`, as for `Error` (REQ-111).
-20. The `message` of each `ZegError` that zeg creates starts with `zeg(): `, `command(): ` or `query(): `, followed by a description (REQ-113).
+20. The `message` of each `ZegError` that zeg creates starts with `zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-113).
 21. `LICENSE` contains the text `MIT License` (REQ-004).
 22. `examples/basic-worker/` contains the example project of syntax.md section 3, plus the route `GET /wrong-kind` (REQ-120).
 23. The example Worker has no `compatibility_flags` (REQ-123).
 24. The coverage report must contain `src/zeg.js` with more than 0 statements (REQ-131).
-25. The text of the `TypeError` for an invalid message starts with `command(): ` or `query(): `, followed by a description (REQ-061).
+25. The error text of the `TypeError` for an invalid message starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-061).
 
 ## 6. Decisions and requirements
 

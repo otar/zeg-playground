@@ -115,7 +115,7 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 
 - A TypeScript 7 editor shows the docblocks only if the project has a `jsconfig.json` or a `tsconfig.json`. An empty file (`{}`) is sufficient.
 - A strict TypeScript project gets the error `TS7016` for `@otar/zeg`, because the package has no type declarations.
-- In a JavaScript project with `checkJs`, the editor shows some incorrect calls, for example `command('RegisterUser')`. zeg also does all its checks at runtime.
+- In a JavaScript project with `checkJs`, the editor reports some incorrect calls as errors, for example `command('RegisterUser')`. zeg also does all its checks at runtime.
 - The result type of `query()` is `unknown`. To set a type in JavaScript, write `/** @type {User} */` before the variable.
 
 ## Rules
@@ -125,7 +125,7 @@ Rules for the files:
 - Each file that a glob finds must be part of a pair. Exclude helper files with a negative pattern, for example `'!**/_*.js'`.
 - A handler file name is the name of the message file without `.js`, plus `Handler.js`. The names are case-sensitive.
 - A message file and its handler file must be in the same folder and in the same glob output.
-- The handler files can be in a separate folder, for example `src/command-handlers/`. Section 3.9 of `docs/syntax.md` shows the globs with the Vite option `base`.
+- The handler files can be in a separate folder of the project, for example `src/command-handlers/`. The Vite option `base` then makes the file paths in the glob output match. Section 3.9 of `docs/syntax.md` shows the globs.
 - Files with the same name in different folders form different pairs.
 
 Rules for the handlers:
