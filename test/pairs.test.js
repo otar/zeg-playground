@@ -1,9 +1,11 @@
-// docs/spec.md section 4.3: REQ-020 to REQ-033.
+// docs/spec.md section 4.3: REQ-020 to REQ-034.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, cmd, calls, resetCalls } from './spec-fixtures.js';
 import { checkSeen, expectHandled, expectThrows } from './helpers.js';
 import Ping from './fixtures/queries/Ping.js';
+import SplitPing from './fixtures/split/queries/Ping.js';
+import SubPing from './fixtures/split/queries/sub/Ping.js';
 
 beforeEach(() => {
   resetCalls();
@@ -199,6 +201,37 @@ describe('4.3 zeg(): files and pairs', () => {
       commands: { ...cmd, './AHandlerHandler.js': { default: AH } },
     });
     expect(error.message).toContain('./AHandlerHandler.js');
+  });
+
+  it('REQ-034 handler files can be in a separate folder: two globs with the Vite option base', async () => {
+    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+      eager: true,
+      base: './fixtures/split/queries',
+    });
+    const handlers = import.meta.glob('./**/*Handler.js', {
+      eager: true,
+      base: './fixtures/split/query-handlers',
+    });
+    expect(Object.keys(messages).sort()).toEqual(['./Ping.js', './sub/Ping.js']);
+    expect(Object.keys(handlers).sort()).toEqual(['./PingHandler.js', './sub/PingHandler.js']);
+    expect(zeg({ queries: { ...messages, ...handlers } })).toBeUndefined();
+    expect(await query(new SplitPing())).toBe('split pong');
+    expect(await query(new SubPing())).toBe('sub pong');
+  });
+
+  it('REQ-034 without the Vite option base, the file paths of the handler files do not match', () => {
+    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+      eager: true,
+      base: './fixtures/split/queries',
+    });
+    const handlers = import.meta.glob('./fixtures/split/query-handlers/**/*Handler.js', {
+      eager: true,
+    });
+    expect(Object.keys(handlers).sort()).toEqual([
+      './fixtures/split/query-handlers/PingHandler.js',
+      './fixtures/split/query-handlers/sub/PingHandler.js',
+    ]);
+    expectThrows('INVALID_CONFIG', { queries: { ...messages, ...handlers } });
   });
 
   it('REQ-113 the ZegErrors of this file have known codes', () => {

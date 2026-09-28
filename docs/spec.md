@@ -436,6 +436,26 @@ Source: D-15, D-37. Test: U.
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`, because `./AHandler.js` is a handler file and not a message file
 
+#### REQ-034 Handler files can be in a separate folder
+
+Source: D-11, syntax.md 3.9. Test: U.
+
+- Given the folder `test/fixtures/split/` with these files:
+  - `queries/Ping.js` and `queries/sub/Ping.js`, each with a default class
+  - `query-handlers/PingHandler.js` with a default class whose `handle()` returns `'split pong'`
+  - `query-handlers/sub/PingHandler.js` with a default class whose `handle()` returns `'sub pong'`
+  - `query-handlers/_pong.js` with a named export only, which the two handler files import
+- And these two globs, which use the Vite option `base`:
+  - `messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], { eager: true, base: './fixtures/split/queries' })`
+  - `handlers = import.meta.glob('./**/*Handler.js', { eager: true, base: './fixtures/split/query-handlers' })`
+- When the test calls `zeg({ queries: { ...messages, ...handlers } })`
+- Then the file paths of `messages` are `./Ping.js` and `./sub/Ping.js`, and the file paths of `handlers` are `./PingHandler.js` and `./sub/PingHandler.js`
+- And `zeg()` returns `undefined`
+- And `query()` resolves to `'split pong'` for the message class of `queries/Ping.js` and to `'sub pong'` for the message class of `queries/sub/Ping.js`
+- Given `messages` and the handler glob without the option `base`: `import.meta.glob('./fixtures/split/query-handlers/**/*Handler.js', { eager: true })`
+- When the test calls `zeg()` with the merged glob outputs
+- Then the call throws `INVALID_CONFIG`, because the file paths of the handler files do not match the file paths of the message files
+
 ### 4.4 zeg(): classes
 
 #### REQ-040 zeg() reads only the default export
@@ -1089,7 +1109,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-08 | REQ-045, REQ-076, REQ-121 |
 | D-09 | REQ-014, REQ-015, REQ-075 |
 | D-10 | REQ-021, REQ-022, REQ-030 |
-| D-11 | REQ-020 to REQ-025, REQ-027, REQ-031 |
+| D-11 | REQ-020 to REQ-025, REQ-027, REQ-031, REQ-034 |
 | D-12 | REQ-026, REQ-075 |
 | D-13 | REQ-040 |
 | D-14 | REQ-030, REQ-032, REQ-120 |

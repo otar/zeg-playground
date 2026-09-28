@@ -330,6 +330,70 @@ Do not merge such glob outputs with `{ ...userCommands, ...billingCommands }`. E
 
 A message file and its handler file must be in the same glob output [D-11].
 
+Section 3.9 shows the one exception to the rule about the merge.
+
+### 3.9 Handler files in a separate folder
+
+The handler files can be in a separate folder, for example `src/command-handlers/` for the files in `src/commands/`:
+
+```
+src/
+  index.js
+  commands/
+    RegisterUser.js
+    SendWelcomeEmail.js
+    billing/
+      ChargeCard.js
+  command-handlers/
+    RegisterUserHandler.js
+    SendWelcomeEmailHandler.js
+    _email.js
+    billing/
+      ChargeCardHandler.js
+  queries/
+    GetUser.js
+  query-handlers/
+    GetUserHandler.js
+```
+
+For each kind, use two globs with the Vite option `base`. Merge the two glob outputs with a spread:
+
+```js
+// src/index.js
+import { zeg } from '@otar/zeg';
+
+zeg({
+  commands: {
+    ...import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+      eager: true,
+      base: './commands',
+    }),
+    ...import.meta.glob('./**/*Handler.js', { eager: true, base: './command-handlers' }),
+  },
+  queries: {
+    ...import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+      eager: true,
+      base: './queries',
+    }),
+    ...import.meta.glob('./**/*Handler.js', { eager: true, base: './query-handlers' }),
+  },
+});
+
+// export default { fetch } as in section 3.7
+```
+
+With the option `base`, each file path in the glob output is relative to the base folder (background fact 22). For example, the file path of `src/commands/billing/ChargeCard.js` is `./billing/ChargeCard.js`, and the file path of `src/command-handlers/billing/ChargeCardHandler.js` is `./billing/ChargeCardHandler.js`. As a result, zeg finds the pairs as in the other sections [D-11]. A base folder that starts with `./` or `../` is relative to the file that contains the glob.
+
+Obey these rules:
+
+- The name of each handler file must end in `Handler.js`.
+- The handler folder must have the same subfolders as the message folder. For example, `src/commands/billing/ChargeCard.js` needs `src/command-handlers/billing/ChargeCardHandler.js`.
+- Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry.
+
+The handler glob does not find `_email.js`, because its name does not end in `Handler.js`. A handler file imports a message class with a path relative to its own folder, for example `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
+
+`zeg()` does the same checks as for one glob. For example, if `src/commands/Refund.js` has no handler file, `zeg()` throws `INVALID_CONFIG`. The error text contains the file paths relative to the base folder, for example `zeg(): commands ./Refund.js: no handler file ./RefundHandler.js`. The text does not contain the name of the folder.
+
 ## 4. API
 
 The package `@otar/zeg` has four exports [D-02]:

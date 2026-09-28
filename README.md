@@ -116,6 +116,7 @@ Rules for the files:
 - Each file that a glob finds must be part of a pair. Exclude helper files with a negative pattern, for example `'!**/_*.js'`.
 - A handler file name is the name of the message file without `.js`, plus `Handler.js`. The names are case-sensitive.
 - A message file and its handler file must be in the same folder and in the same glob output.
+- The handler files can be in a separate folder, for example `src/command-handlers/`. Section 3.9 of `docs/syntax.md` shows the globs with the Vite option `base`.
 - Files with the same name in different folders form different pairs.
 
 Rules for the handlers:
