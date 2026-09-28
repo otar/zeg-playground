@@ -4,8 +4,8 @@ import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 zeg({
-  commands: import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true }),
-  queries: import.meta.glob(['./queries/**/*.js', '!**/_*.js'], { eager: true }),
+  commands: import.meta.glob('./commands/**/*.js', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.js', { eager: true }),
 });
 
 export default {

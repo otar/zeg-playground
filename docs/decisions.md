@@ -14,7 +14,6 @@ To change a decision, change this file first. Then update the documents that ref
 - **Glob output:** the object that `import.meta.glob` returns. Each property name is a file path, and each property value is the module of that file.
 - **Handler file:** a file in a glob output whose name ends in `Handler.js`, for example `RegisterUserHandler.js`.
 - **Message file:** a file in a glob output whose name does not end in `Handler.js`, for example `RegisterUser.js`.
-- **Helper file:** a file in a command folder or a query folder that is not a message file or a handler file of a pair, for example `_email.js`.
 - **Message class:** the default export of a message file.
 - **Handler class:** the default export of a handler file.
 - **Pair:** a message file and its handler file.
@@ -47,7 +46,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for zeg.
 - **D-12** Files with the same name in different folders form different pairs. For example, `./commands/billing/Charge.js` and `./commands/shop/Charge.js` are valid together.
 - **D-13** Each message file and each handler file has a default export. **(detail)** The library reads only the default export. It ignores other exports.
-- **D-14** If a command folder or a query folder contains helper files, the project excludes them with a negative glob pattern. An example is `'!**/_*.js'`. **(detail)** A glob that finds only `*Handler.js` files, as in `docs/syntax.md` section 3.9, does not find helper files such as `_email.js`. It needs no negative pattern.
+- **D-14** Revision 7 removed this decision. It described a negative glob pattern for files that are not part of a pair.
 - **D-15** **(detail)** The name of a message file cannot end in `Handler.js`, because the library then treats it as a handler file.
 
 ## Resolution
@@ -88,7 +87,7 @@ To change a decision, change this file first. Then update the documents that ref
   - **(detail)** A value in a glob output is not an object. For example, a lazy glob supplies functions, which are not valid.
   - **(detail)** A file path in a glob output does not end in `.js`.
   - A file has no default export.
-  - A message file has no handler file in its folder in the same glob output, or a handler file has no message file in its folder in the same glob output. This includes a helper file that no negative pattern excludes. **(detail)** It also includes a handler file with the name `Handler.js` only.
+  - A message file has no handler file in its folder in the same glob output, or a handler file has no message file in its folder in the same glob output. **(detail)** It also includes a handler file with the name `Handler.js` only.
   - A message class does not pass the check in D-20, or a handler class does not pass the check in D-19.
   - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
 - **D-38** `zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
@@ -214,3 +213,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The tests check the start of each error text, and `npm run test:mutation` fails below a mutation score of 100%. `src/zeg.js` no longer has a separate check for a file without a default export, and it calculates each key one time. This changed D-17, D-75 and background fact 21. The spec changed rule 8 of section 1.5, REQ-056, REQ-061, REQ-113 and spec detail 20, and it added spec detail 25.
   - The handler files can be in a separate folder, for example `src/command-handlers/`, without a change to the library. A project uses two globs with the Vite option `base` and merges the two glob outputs with a spread (`docs/syntax.md` section 3.9). This changed D-07, D-11, D-14 and background fact 17, and it added background fact 22. The spec added REQ-034, and the tests added the fixtures in `test/fixtures/split/`.
   - Each export has a JSDoc docblock, and TypeScript 7 checks the docblocks. `command()` and `query()` became function declarations. The type check found a type mismatch in Z2: `KINDS.includes()` got a symbol. Z2 now converts each option name to a text first, and the behavior did not change. This added D-76, D-77 and background fact 23, and it added details to D-02 and D-57. The development dependencies now include `typescript`. The spec added REQ-135 and REQ-136.
+- **Revision 7** (after revision 6): the user asked for two changes.
+  - zeg has no rule for helper files. The project decides with its globs which files zeg gets. Revision 7 removed D-14 and the term "Helper file", and it changed D-37. The spec changed REQ-030, REQ-032, REQ-034, REQ-120 and section 6. In `docs/syntax.md`, sections 3, 3.6 to 3.9, 6.1 and 7.2 changed. The example Worker and the test fixtures no longer have files whose names start with `_`. Only the README shows the pattern `'!**/_*.js'`, as an example.

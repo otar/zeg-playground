@@ -77,8 +77,8 @@ import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 zeg({
-  commands: import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true }),
-  queries: import.meta.glob(['./queries/**/*.js', '!**/_*.js'], { eager: true }),
+  commands: import.meta.glob('./commands/**/*.js', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.js', { eager: true }),
 });
 
 export default {
@@ -122,7 +122,7 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 
 Rules for the files:
 
-- Each file that a glob finds must be part of a pair. Exclude helper files with a negative pattern, for example `'!**/_*.js'`.
+- Each file that a glob finds must be part of a pair. To exclude other files, add a negative pattern, for example `'!**/_*.js'`.
 - A handler file name is the name of the message file without `.js`, plus `Handler.js`. The names are case-sensitive.
 - A message file and its handler file must be in the same folder and in the same glob output.
 - The handler files can be in a separate folder of the project, for example `src/command-handlers/`. The Vite option `base` then makes the file paths in the glob output match. Section 3.9 of `docs/syntax.md` shows the globs.

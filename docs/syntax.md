@@ -34,7 +34,6 @@ src/
     RegisterUserHandler.js
     SendWelcomeEmail.js
     SendWelcomeEmailHandler.js
-    _email.js
     billing/
       ChargeCard.js
       ChargeCardHandler.js
@@ -47,8 +46,6 @@ test/
   fake-handler.test.js
   get-user-handler.test.js
 ```
-
-`_email.js` is a helper file. It is not part of a pair, so the glob excludes it [D-14].
 
 ### 3.1 package.json
 
@@ -193,19 +190,10 @@ export default class {
 
 ```js
 // src/commands/SendWelcomeEmailHandler.js
-import { welcomeText } from './_email.js';
-
 export default class {
   handle(message) {
-    console.log(welcomeText(message.email));
+    console.log(`welcome mail to ${message.email}`);
   }
-}
-```
-
-```js
-// src/commands/_email.js (a helper file, not a message)
-export function welcomeText(email) {
-  return `welcome mail to ${email}`;
 }
 ```
 
@@ -234,7 +222,7 @@ export default class {
 
 The rules for files and pairs:
 
-- Each file that a glob finds must be part of a pair [D-10]. Exclude helper files with a negative glob pattern [D-14].
+- Each file that a glob finds must be part of a pair [D-10].
 - A handler file name ends in `Handler.js`. Each other file that a glob finds is a message file. For this reason, the name of a message file cannot end in `Handler.js` [D-15].
 - `X.js` and `XHandler.js` in the same folder form a pair. Each message file needs its handler file, and each handler file needs its message file. The file names must match exactly, and the match is case-sensitive [D-11].
 - Files with the same name in different folders form different pairs [D-12].
@@ -262,8 +250,8 @@ import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 zeg({
-  commands: import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true }),
-  queries: import.meta.glob(['./queries/**/*.js', '!**/_*.js'], { eager: true }),
+  commands: import.meta.glob('./commands/**/*.js', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.js', { eager: true }),
 });
 
 export default {
@@ -288,10 +276,9 @@ One glob can have several patterns. As a result, one glob can find files in seve
 
 ```js
 zeg({
-  commands: import.meta.glob(
-    ['./users/commands/**/*.js', './billing/commands/**/*.js', '!**/_*.js'],
-    { eager: true },
-  ),
+  commands: import.meta.glob(['./users/commands/**/*.js', './billing/commands/**/*.js'], {
+    eager: true,
+  }),
 });
 ```
 
@@ -299,7 +286,7 @@ A wider pattern also works. It finds the files in the `commands` folder of each 
 
 ```js
 zeg({
-  commands: import.meta.glob(['./*/commands/**/*.js', '!**/_*.js'], { eager: true }),
+  commands: import.meta.glob('./*/commands/**/*.js', { eager: true }),
 });
 ```
 
@@ -307,12 +294,12 @@ If each feature folder has its own glob in its own file, give the glob outputs a
 
 ```js
 // src/users/globs.js
-export const commands = import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true });
+export const commands = import.meta.glob('./commands/**/*.js', { eager: true });
 ```
 
 ```js
 // src/billing/globs.js
-export const commands = import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true });
+export const commands = import.meta.glob('./commands/**/*.js', { eager: true });
 ```
 
 ```js
@@ -347,7 +334,6 @@ src/
   command-handlers/
     RegisterUserHandler.js
     SendWelcomeEmailHandler.js
-    _email.js
     billing/
       ChargeCardHandler.js
   queries/
@@ -364,14 +350,14 @@ import { zeg } from '@otar/zeg';
 
 zeg({
   commands: {
-    ...import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+    ...import.meta.glob(['./**/*.js', '!**/*Handler.js'], {
       eager: true,
       base: './commands',
     }),
     ...import.meta.glob('./**/*Handler.js', { eager: true, base: './command-handlers' }),
   },
   queries: {
-    ...import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+    ...import.meta.glob(['./**/*.js', '!**/*Handler.js'], {
       eager: true,
       base: './queries',
     }),
@@ -390,7 +376,7 @@ Obey these rules:
 - The handler folder must have the same subfolders as the message folder. For example, `src/commands/billing/ChargeCard.js` needs `src/command-handlers/billing/ChargeCardHandler.js`.
 - Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry.
 
-The handler glob does not find `_email.js`, because its name does not end in `Handler.js`. A handler file imports a message class with a path relative to its own folder, for example `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
+A handler file imports a message class with a path relative to its own folder, for example `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
 
 `zeg()` does the same checks as for one glob. For example, if `src/commands/Refund.js` has no handler file, `zeg()` throws `INVALID_CONFIG`. The error text contains the file paths relative to the base folder, for example `zeg(): commands ./Refund.js: no handler file ./RefundHandler.js`. The file paths in the error text do not contain the base folder `./commands`.
 
@@ -561,8 +547,8 @@ src/commands/PingHandler.js          missing       -> message file without handl
 src/commands/PongHandler.js          exists
 src/commands/Pong.js                 missing       -> handler file without message file
 
-src/commands/helpers.js              a helper file that no negative pattern excludes
-                                     -> no default export, or no helpersHandler.js
+src/commands/utils.js                a file that is not part of a pair
+                                     -> no default export, or no utilsHandler.js
 
 src/commands/Handler.js              -> a handler file without a message file
 
@@ -675,8 +661,8 @@ import GetUser from '../src/queries/GetUser.js';
 
 it('registers a user', async () => {
   zeg({
-    commands: import.meta.glob(['../src/commands/**/*.js', '!**/_*.js'], { eager: true }),
-    queries: import.meta.glob(['../src/queries/**/*.js', '!**/_*.js'], { eager: true }),
+    commands: import.meta.glob('../src/commands/**/*.js', { eager: true }),
+    queries: import.meta.glob('../src/queries/**/*.js', { eager: true }),
   });
   await command(new RegisterUser('a@b.c'));
   expect(await query(new GetUser('a@b.c'))).toEqual({ email: 'a@b.c' });

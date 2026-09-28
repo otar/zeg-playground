@@ -132,7 +132,7 @@ describe('4.3 zeg(): files and pairs', () => {
 
   it('REQ-030 each file must be part of a pair', () => {
     for (const module of [{ welcomeText() {} }, { default: class {} }]) {
-      expectThrows('INVALID_CONFIG', { commands: { ...cmd, './_email.js': module } });
+      expectThrows('INVALID_CONFIG', { commands: { ...cmd, './email.js': module } });
     }
   });
 
@@ -153,8 +153,8 @@ describe('4.3 zeg(): files and pairs', () => {
     }
   });
 
-  it('REQ-032 real glob outputs work: an eager glob with a negative pattern', async () => {
-    const output = import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js'], { eager: true });
+  it('REQ-032 real glob outputs work: an eager glob', async () => {
+    const output = import.meta.glob('./fixtures/queries/**/*.js', { eager: true });
     expect(Object.keys(output).sort()).toEqual([
       './fixtures/queries/Ping.js',
       './fixtures/queries/PingHandler.js',
@@ -168,16 +168,11 @@ describe('4.3 zeg(): files and pairs', () => {
     expect(Object.keys(output).sort()).toEqual([
       './fixtures/queries/Ping.js',
       './fixtures/queries/PingHandler.js',
-      './fixtures/queries/_helper.js',
     ]);
     for (const value of Object.values(output)) {
       expect(typeof value).toBe('function');
     }
     expectThrows('INVALID_CONFIG', { queries: output });
-    // Also a lazy glob with the negative pattern
-    expectThrows('INVALID_CONFIG', {
-      queries: import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js']),
-    });
   });
 
   it('REQ-032 a second message file with a default export from another file throws INVALID_CONFIG', () => {
@@ -204,7 +199,7 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-034 handler files can be in a separate folder: two globs with the Vite option base', async () => {
-    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js'], {
       eager: true,
       base: './fixtures/split/queries',
     });
@@ -220,7 +215,7 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-034 without the Vite option base, the file paths of the handler files do not match', () => {
-    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], {
+    const messages = import.meta.glob(['./**/*.js', '!**/*Handler.js'], {
       eager: true,
       base: './fixtures/split/queries',
     });

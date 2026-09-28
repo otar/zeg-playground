@@ -392,9 +392,9 @@ Source: D-15, D-37. Test: U.
 
 #### REQ-030 Each file must be part of a pair
 
-Source: D-10, D-14, D-37. Test: U.
+Source: D-10, D-37. Test: U.
 
-- Given `cmd` plus a helper file `./_email.js` with one of these modules: `{ welcomeText() {} }`, `{ default: class {} }`
+- Given `cmd` plus a file `./email.js` that is not part of a pair, with one of these modules: `{ welcomeText() {} }`, `{ default: class {} }`
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
@@ -411,13 +411,12 @@ Source: D-11, syntax.md 7.2. Test: U.
 
 #### REQ-032 Real glob outputs work
 
-Source: D-07, D-14, D-37. Test: U.
+Source: D-07, D-37. Test: U.
 
 - Given the folder `test/fixtures/queries/` with these files:
   - `Ping.js` with a default class
   - `PingHandler.js` with a default class whose `handle()` returns `'pong'`
-  - `_helper.js` with a named export only
-- When the test calls `zeg({ queries: import.meta.glob(['./fixtures/queries/**/*.js', '!**/_*.js'], { eager: true }) })` and then `await query(new Ping())`
+- When the test calls `zeg({ queries: import.meta.glob('./fixtures/queries/**/*.js', { eager: true }) })` and then `await query(new Ping())`
 - Then `zeg()` returns `undefined`, and the Promise resolves to `'pong'`
 - Given the same folder and the lazy glob `import.meta.glob('./fixtures/queries/**/*.js')`
 - When the test calls `zeg({ queries: output })`
@@ -444,9 +443,8 @@ Source: D-11, syntax.md 3.9. Test: U.
   - `queries/Ping.js` and `queries/sub/Ping.js`, each with a default class
   - `query-handlers/PingHandler.js` with a default class whose `handle()` returns `'split pong'`
   - `query-handlers/sub/PingHandler.js` with a default class whose `handle()` returns `'sub pong'`
-  - `query-handlers/_pong.js` with a named export only, which the two handler files import
 - And these two globs, which use the Vite option `base`:
-  - `messages = import.meta.glob(['./**/*.js', '!**/*Handler.js', '!**/_*.js'], { eager: true, base: './fixtures/split/queries' })`
+  - `messages = import.meta.glob(['./**/*.js', '!**/*Handler.js'], { eager: true, base: './fixtures/split/queries' })`
   - `handlers = import.meta.glob('./**/*Handler.js', { eager: true, base: './fixtures/split/query-handlers' })`
 - When the test calls `zeg({ queries: { ...messages, ...handlers } })`
 - Then the file paths of `messages` are `./Ping.js` and `./sub/Ping.js`, and the file paths of `handlers` are `./PingHandler.js` and `./sub/PingHandler.js`
@@ -965,7 +963,7 @@ Source: D-53. Test: U.
 
 #### REQ-120 The example Worker works after a production build
 
-Source: D-04, D-05, D-06, D-07, D-14, D-69, syntax.md 3. Test: B.
+Source: D-04, D-05, D-06, D-07, D-69, syntax.md 3. Test: B.
 
 - **(spec detail)** Given `examples/basic-worker/`. It contains the example project of syntax.md section 3 without the test files, plus one route:
 
@@ -982,7 +980,7 @@ Source: D-04, D-05, D-06, D-07, D-14, D-69, syntax.md 3. Test: B.
   | `GET /wrong-kind` | status 400, body `{"name":"ZegError","code":"HANDLER_NOT_FOUND"}` |
 
 - Then each response has the expected status and body
-- And the console output of `vite preview` contains `welcome mail to a@b.c`, which shows the nested dispatch and the helper file
+- And the console output of `vite preview` contains `welcome mail to a@b.c`, which shows the nested dispatch
 
 #### REQ-121 The example Worker works after a minified build
 
@@ -1134,7 +1132,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-11 | REQ-020 to REQ-025, REQ-027, REQ-031, REQ-034 |
 | D-12 | REQ-026, REQ-075 |
 | D-13 | REQ-040 |
-| D-14 | REQ-030, REQ-032, REQ-120 |
+| D-14 | Removed in revision 7 of `docs/decisions.md` |
 | D-15 | REQ-029, REQ-033 |
 | D-16 | REQ-020, REQ-064, REQ-070 |
 | D-17 | REQ-026, REQ-075 |

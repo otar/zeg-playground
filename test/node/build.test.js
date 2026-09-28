@@ -127,7 +127,7 @@ async function checkRequests(args = []) {
       400,
       '{"name":"ZegError","code":"HANDLER_NOT_FOUND"}',
     ]);
-    // The nested dispatch and the helper file write this line
+    // The nested dispatch writes this line
     expect(
       await waitFor(() => server.output.includes('welcome mail to a@b.c'), 10_000),
       server.output,
