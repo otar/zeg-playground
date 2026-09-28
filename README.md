@@ -79,9 +79,9 @@ npm install @otar/zeg
 - **Default export only.** zeg reads only the default export of each file that a glob finds. This export must be a class.
 - **No registration.** Vite finds the files at build time, so you do not register handlers.
 - **Classes, not names.** zeg finds the handler through the class of the message. The classes can be anonymous.
-- **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value of the handler, or rejects if that value is `undefined`.
+- **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value from the handler, or rejects if that value is `undefined`.
 - **Errors at startup.** zeg checks all pairs when the Worker starts. A failed check stops the Worker before the first request.
-- **No build step.** The package is less than 1.5 KB after minification and gzip compression.
+- **No build step.** The package contains the source file `src/zeg.js`, not a built file. After esbuild minifies this file and gzip compresses it, its size is less than 1.5 KB.
 
 ## Requirements
 
@@ -123,7 +123,7 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 
 Rules for the files:
 
-- Each file that a glob finds must be part of a pair. To exclude other files, add a negative pattern, for example `'!**/_*.js'`.
+- Each file that a glob finds must be part of a pair. To exclude files that are not part of a pair, add a negative pattern to the glob, for example `['./commands/**/*.js', '!**/_*.js']`.
 - A handler file name is the name of the message file without `.js`, plus `Handler.js`. The names are case-sensitive.
 - A message file and its handler file must be in the same folder and in the same glob output.
 - The handler files can be in a separate folder of the project, for example `src/command-handlers/`. The Vite option `base` then makes the file paths in the glob output match. Section 3.9 of `docs/syntax.md` shows the globs.
