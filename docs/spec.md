@@ -112,6 +112,7 @@ The rules for the classes (Z4):
 - The default export of a message file must be a function whose `prototype` is an object [D-20]. If the default export is `undefined`, the file has no default export.
 - The default export of a handler file must be a function, and its `prototype.handle` must be a function [D-19].
 - Z4 reads the `prototype` of each message class one time. Z6 and Z7 use that value.
+- The implementation can do the check of Z6 in the same loop as Z5. A failed check of Z5 still comes before a failed check of Z6.
 
 The rules for the pairs (Z5):
 
@@ -134,7 +135,7 @@ Other rules:
 | S1 | Create the Promise that the call returns. |  |
 | S2 | Check that `message` is an object and not an array. Read `Object.getPrototypeOf(message)` one time. Check that the value is not `Object.prototype` and not `null` [D-27]. | Reject with a `TypeError`. |
 | S3 | Check that zeg is configured [D-46]. | Reject with `NOT_CONFIGURED`. |
-| S4 | In the registry of the kind, find the pair whose message class has the `prototype` from S2 [D-16]. | Reject with `HANDLER_NOT_FOUND`. If the registry of the other kind contains the prototype, the error text contains the name of the other function and the key. If that option is an array, the text also contains the position [D-48]. |
+| S4 | In the registry, find the pair of the kind whose message class has the `prototype` from S2 [D-16]. | Reject with `HANDLER_NOT_FOUND`. If the registry contains the prototype for the other kind, the error text contains the name of the other function and the key. If that option is an array, the text also contains the position [D-48]. |
 | S5 | Create the handler instance with `new HandlerClass()` [D-21]. | Reject with the value that the constructor throws. |
 | S6 | Read `instance.handle` and call it as a method, with one argument: `message` [D-18]. | Reject with the value that the read or the call throws. |
 | S7 | Wait for the return value of `handle()` with `await`. | Reject with the reason of the rejection. |

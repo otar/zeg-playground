@@ -197,3 +197,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 - **Revision 6** (after revision 5): the user asked for six changes.
   - The library file `src/index.js` became `src/zeg.js`, because `index.js` is also the name of the Worker entry file of a user project and of the example. This changed D-56, D-63 (a note), D-70, D-71, D-75 and background fact 21. The spec changed rule 4 and rule 8 of section 1.5, REQ-002, REQ-003, REQ-006, REQ-131, REQ-132 and spec detail 24. In `docs/syntax.md` section 3.8, the glob files of the feature folders became `globs.js`.
   - The REQ-122 build test stops when the Vite process stops, because a stopped process cannot answer. The spec changed REQ-122.
+  - A simpler `src/zeg.js` with the same behavior: one registry Map for both kinds, one list of glob outputs, and the check of Z6 in the loop of Z5. The spec changed the notes of section 2 and the S4 row.

@@ -1,10 +1,10 @@
 // zeg: a small CQRS library for Cloudflare Workers.
 // The rules are in docs/spec.md. Z1 to Z8 and S1 to S8 refer to its sections 2 and 3.
 
-const KINDS = ['commands', 'queries'];
 const CALLS = { commands: 'command()', queries: 'query()' };
+const KINDS = Object.keys(CALLS);
 
-// The registry: for each kind, a Map from the prototype of a message class to its pair.
+// The registry: a Map from the prototype of a message class to its pair, for both kinds.
 // It is null until the first call to zeg() returns.
 let registry = null;
 
@@ -39,16 +39,15 @@ export function zeg(options) {
 
   // Z2
   for (const name of Reflect.ownKeys(options)) {
-    if (name !== 'commands' && name !== 'queries') {
+    if (!KINDS.includes(name)) {
       fail(`unknown option ${String(name)}`);
     }
   }
 
-  // Z3: for each kind, a list of [label, glob output]
-  const lists = {};
+  // Z3: a list of [kind, label, glob output]
+  const outputs = [];
   for (const kind of KINDS) {
     const value = Object.hasOwn(options, kind) ? options[kind] : undefined;
-    const list = [];
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
         const label = `${kind}[${i}]`;
@@ -57,52 +56,50 @@ export function zeg(options) {
         if (!isPlainObject(output)) {
           fail(`${label} must be a plain object`);
         }
-        list.push([label, output]);
+        outputs.push([kind, label, output]);
       }
     } else if (isPlainObject(value)) {
-      list.push([kind, value]);
+      outputs.push([kind, kind, value]);
     } else if (value !== undefined) {
       fail(`${kind} must be a glob output or an array of glob outputs`);
     }
-    lists[kind] = list;
   }
 
   // Z4: check each file and read its class one time
-  const outputs = [];
-  for (const kind of KINDS) {
-    for (const [label, output] of lists[kind]) {
-      const files = new Map();
-      for (const path of Object.keys(output)) {
-        const where = `${label} ${path}`;
-        if (!path.endsWith('.js')) {
-          fail(`${where}: the file path must end in .js`);
-        }
-        const module = output[path];
-        if (!isObject(module)) {
-          fail(`${where}: the module must be an object`);
-        }
-        const cls = module.default;
-        if (cls === undefined) {
-          fail(`${where}: the file has no default export`);
-        }
-        const isHandler = path.endsWith('Handler.js');
-        const proto = typeof cls === 'function' ? cls.prototype : undefined;
-        if (isHandler) {
-          if (!proto || typeof proto.handle !== 'function') {
-            fail(`${where}: the default export must be a class with a handle() method`);
-          }
-        } else if (!isObject(proto)) {
-          fail(`${where}: the default export must be a class`);
-        }
-        files.set(path, { isHandler, cls, proto, where });
+  const checked = [];
+  for (const [kind, label, output] of outputs) {
+    const files = new Map();
+    for (const path of Object.keys(output)) {
+      const where = `${label} ${path}`;
+      if (!path.endsWith('.js')) {
+        fail(`${where}: the file path must end in .js`);
       }
-      outputs.push({ kind, label, files });
+      const module = output[path];
+      if (!isObject(module)) {
+        fail(`${where}: the module must be an object`);
+      }
+      const cls = module.default;
+      if (cls === undefined) {
+        fail(`${where}: the file has no default export`);
+      }
+      const isHandler = path.endsWith('Handler.js');
+      const proto = typeof cls === 'function' ? cls.prototype : undefined;
+      if (isHandler) {
+        if (!proto || typeof proto.handle !== 'function') {
+          fail(`${where}: the default export must be a class with a handle() method`);
+        }
+      } else if (!isObject(proto)) {
+        fail(`${where}: the default export must be a class`);
+      }
+      files.set(path, { isHandler, cls, proto, where });
     }
+    checked.push({ kind, label, files });
   }
 
-  // Z5: form the pairs in each glob output
-  const pairs = [];
-  for (const { kind, label, files } of outputs) {
+  // Z5: form the pairs in each glob output. The Map is the next registry. Z6 fails only after Z5 is complete.
+  const next = new Map();
+  let duplicate;
+  for (const { kind, label, files } of checked) {
     for (const [path, file] of files) {
       if (file.isHandler) {
         const messagePath = `${path.slice(0, -10)}.js`;
@@ -122,33 +119,28 @@ export function zeg(options) {
         if (!handler) {
           fail(`${file.where}: no handler file ${handlerPath}`);
         }
-        pairs.push({
-          kind,
-          label,
-          key: path.slice(0, -3),
-          where: file.where,
-          proto: file.proto,
-          Handler: handler.cls,
-        });
+        const other = next.get(file.proto);
+        if (other) {
+          duplicate ??= `${other.where} and ${file.where} have the same message class`;
+        } else {
+          next.set(file.proto, {
+            kind,
+            label,
+            key: path.slice(0, -3),
+            where: file.where,
+            Handler: handler.cls,
+          });
+        }
       }
     }
   }
 
   // Z6: no two message classes with the same prototype
-  const seen = new Map();
-  for (const pair of pairs) {
-    const other = seen.get(pair.proto);
-    if (other) {
-      fail(`${other.where} and ${pair.where} have the same message class`);
-    }
-    seen.set(pair.proto, pair);
+  if (duplicate) {
+    fail(duplicate);
   }
 
   // Z7
-  const next = { commands: new Map(), queries: new Map() };
-  for (const pair of pairs) {
-    next[pair.kind].set(pair.proto, pair);
-  }
   registry = next;
 }
 
@@ -174,13 +166,12 @@ async function dispatch(kind, message) {
   }
 
   // S4
-  const pair = registry[kind].get(proto);
-  if (!pair) {
-    const other = registry[kind === 'commands' ? 'queries' : 'commands'].get(proto);
+  const pair = registry.get(proto);
+  if (pair?.kind !== kind) {
     throw new ZegError(
       'HANDLER_NOT_FOUND',
-      other
-        ? `${call}: the message file ${other.key} is in ${other.label}. Use ${CALLS[other.kind]}`
+      pair
+        ? `${call}: the message file ${pair.key} is in ${pair.label}. Use ${CALLS[pair.kind]}`
         : `${call}: no pair for the class of the message`,
     );
   }
