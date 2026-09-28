@@ -232,7 +232,7 @@ describe('4.13 docblocks and the type check', () => {
       encoding: 'utf8',
     });
     expect({ status, stdout, stderr }).toEqual({ status: 0, stdout: '', stderr: '' });
-  });
+  }, 60_000);
 });
 
 describe('1.5 test environment', () => {

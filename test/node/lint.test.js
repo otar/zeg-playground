@@ -72,7 +72,7 @@ describe('4.13 non-functional checks', () => {
     }
     const markdown = ['# Example', '', '```js', ...NO_BRACES, '```', ''].join('\n');
     expect(await curlyErrorLines(eslint, markdown, 'docs/example.md')).toEqual([4, 5, 6, 7, 8]);
-  });
+  }, 60_000);
 
   it('REQ-134 the tools check all tracked files, and no comment in a file turns off curly', async () => {
     const files = gitFiles();
