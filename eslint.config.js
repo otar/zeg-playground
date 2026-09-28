@@ -79,6 +79,8 @@ export default defineConfig([
 
   // The JavaScript code blocks in the Markdown files. A code block often shows only a part of a file.
   // For this reason, the rules for unknown names, unused names and unused expressions are off.
+  // ESLint does not check the blocks with the tag jsx. The first block of README.md has the tag jsx, because
+  // it shows six files with five default exports, and ESLint cannot parse it as one module (D-74).
   {
     name: 'zeg/markdown',
     files: ['**/*.md'],

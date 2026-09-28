@@ -1058,6 +1058,7 @@ Source: D-74. Test: S.
 - And the scripts `lint` and `lint:fix` of `package.json` run these two tools
 - And ESLint and Prettier ignore no tracked JavaScript, JSON, YAML or Markdown file, except `package-lock.json`
 - And no comment in a file turns off the rule `curly`, and no Markdown file has an `eslint-skip` comment
+- And the only code block with the tag `jsx` in the Markdown files is the first code block of `README.md` (D-74)
 - Given the ESLint configuration
 - When a static check lints an `if`, `else`, `for`, `while` and `do` statement without braces, in JavaScript files and in a Markdown code block
 - Then the rule `curly` reports each of these statements as an error

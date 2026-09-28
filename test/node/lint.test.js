@@ -109,6 +109,16 @@ describe('4.13 non-functional checks', () => {
     }
   }, 60_000);
 
+  it('REQ-134 the only jsx code block in the Markdown files is the first code block of README.md', () => {
+    const FENCE = /^[ \t]*(?:`{3,}|~{3,})[ \t]*([^\s`]*)/gm;
+    const markdown = gitFiles().filter((file) => file.endsWith('.md'));
+    const jsx = markdown.flatMap((file) =>
+      [...read(file).matchAll(FENCE)].filter((match) => match[1] === 'jsx').map(() => file),
+    );
+    expect(jsx).toEqual(['README.md']);
+    expect([...read('README.md').matchAll(FENCE)][0][0].trim()).toBe('```jsx');
+  });
+
   it('REQ-134 the Prettier configuration has the decided layout, and Prettier has an exact version', async () => {
     const config = await prettier.resolveConfig(join(ROOT, 'src/zeg.js'));
     expect(config).toMatchObject({

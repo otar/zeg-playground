@@ -1,76 +1,14 @@
 # zeg
 
-zeg is a small CQRS library for Cloudflare Workers. It dispatches each command and each query to its handler.
+[![test](https://github.com/otar/zeg-playground/actions/workflows/test.yml/badge.svg)](https://github.com/otar/zeg-playground/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![gzip: < 1.5 KB](https://img.shields.io/badge/gzip-%3C%201.5%20KB-blue)
 
-- You do not register handlers by hand. Vite finds the message files and the handler files at build time.
-- zeg finds the handler through the class of the message, not through a name. The classes can be anonymous.
-- zeg has four exports, no dependencies and no build step. After esbuild minifies it and gzip compresses it, its size is less than 1.5 KB.
+Simple, opinionated CQRS for Cloudflare Workers. zeg is one JavaScript file with 4 exports and no dependencies.
 
-## Requirements
+## The whole flow
 
-- The project builds with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
-- The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
-- zeg needs no other Vite settings and no compatibility flags.
+A command writes a user, and a query reads the user.
 
-## Installation
-
-```sh
-npm install @otar/zeg
-```
-
-## Example
-
-Each message class is in its own file. Its handler class is in a second file in the same folder. `RegisterUser.js` and `RegisterUserHandler.js` form a pair.
-
-```
-src/
-  index.js
-  commands/
-    RegisterUser.js
-    RegisterUserHandler.js
-  queries/
-    GetUser.js
-    GetUserHandler.js
-```
-
-A message file has a class as its default export:
-
-```js
-// src/commands/RegisterUser.js
-export default class {
-  constructor(email) {
-    this.email = email;
-  }
-}
-```
-
-A handler file has a class with a `handle()` method as its default export:
-
-```js
-// src/commands/RegisterUserHandler.js
-import { env } from 'cloudflare:workers';
-
-export default class {
-  async handle(message) {
-    await env.DB.prepare('INSERT INTO users (email) VALUES (?)').bind(message.email).run();
-  }
-}
-```
-
-```js
-// src/queries/GetUserHandler.js
-import { env } from 'cloudflare:workers';
-
-export default class {
-  async handle(message) {
-    return env.DB.prepare('SELECT email FROM users WHERE email = ?').bind(message.email).first();
-  }
-}
-```
-
-The Worker entry file calls `zeg()` one time with one glob for each kind:
-
-```js
+```jsx
 // src/index.js
 import { zeg, command, query } from '@otar/zeg';
 import RegisterUser from './commands/RegisterUser.js';
@@ -88,7 +26,70 @@ export default {
     return Response.json(await query(new GetUser(email)));
   },
 };
+
+// src/commands/RegisterUser.js
+export default class {
+  constructor(email) {
+    this.email = email;
+  }
+}
+
+// src/commands/RegisterUserHandler.js
+import { users } from '../store.js';
+
+export default class {
+  handle(message) {
+    users.set(message.email, { email: message.email });
+  }
+}
+
+// src/queries/GetUser.js
+export default class {
+  constructor(email) {
+    this.email = email;
+  }
+}
+
+// src/queries/GetUserHandler.js
+import { users } from '../store.js';
+
+export default class {
+  handle(message) {
+    return users.get(message.email) ?? null;
+  }
+}
+
+// src/store.js
+export const users = new Map();
 ```
+
+For a POST request with the body `{"email":"ada@example.com"}`, the Worker returns `{"email":"ada@example.com"}`.
+
+The `users` Map is in the memory of one isolate, so this example is only a demo.
+
+## Install
+
+```sh
+npm install @otar/zeg
+```
+
+## Opinions
+
+- **Pairs by file name.** `X.js` and `XHandler.js` in the same folder form a pair.
+- **Default export only.** zeg reads only the default export of each file that a glob finds. This export must be a class.
+- **No registration.** Vite finds the files at build time, so you do not register handlers.
+- **Classes, not names.** zeg finds the handler through the class of the message. The classes can be anonymous.
+- **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value of the handler, or rejects if that value is `undefined`.
+- **Errors at startup.** zeg checks all pairs when the Worker starts. A failed check stops the Worker before the first request.
+- **No build step.** The package is less than 1.5 KB after minification and gzip compression.
+
+## Requirements
+
+- The project builds with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
+- The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
+- zeg needs no other Vite settings and no compatibility flags.
+
+## Full example
 
 The folder `examples/basic-worker/` contains a complete Worker with a D1 database. To run it, do these steps:
 
