@@ -79,17 +79,16 @@ export function zeg(options) {
         fail(`${where}: the module must be an object`);
       }
       const cls = module.default;
-      if (cls === undefined) {
-        fail(`${where}: the file has no default export`);
-      }
       const isHandler = path.endsWith('Handler.js');
       const proto = typeof cls === 'function' ? cls.prototype : undefined;
       if (isHandler) {
         if (!proto || typeof proto.handle !== 'function') {
-          fail(`${where}: the default export must be a class with a handle() method`);
+          fail(
+            `${where}: the file must have a default export that is a class with a handle() method`,
+          );
         }
       } else if (!isObject(proto)) {
-        fail(`${where}: the default export must be a class`);
+        fail(`${where}: the file must have a default export that is a class`);
       }
       files.set(path, { isHandler, cls, proto, where });
     }
@@ -114,7 +113,8 @@ export function zeg(options) {
           fail(`${file.where}: ${messagePath} is a handler file, not a message file`);
         }
       } else {
-        const handlerPath = `${path.slice(0, -3)}Handler.js`;
+        const key = path.slice(0, -3);
+        const handlerPath = `${key}Handler.js`;
         const handler = files.get(handlerPath);
         if (!handler) {
           fail(`${file.where}: no handler file ${handlerPath}`);
@@ -126,7 +126,7 @@ export function zeg(options) {
           next.set(file.proto, {
             kind,
             label,
-            key: path.slice(0, -3),
+            key,
             where: file.where,
             Handler: handler.cls,
           });

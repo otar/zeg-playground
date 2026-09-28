@@ -84,7 +84,7 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 5. The tests of REQ-053, REQ-060 and REQ-062 need a module state without a call to `zeg()`. Each of these requirements has its own test file. Each such file runs its scenarios in the order of the requirement.
 6. The tests in one file run one after the other. They do not use `.concurrent`.
 7. The build tests (type B) and the static checks (types S and N) run in Node, because they start processes and read files [D-68].
-8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration. Stryker changes only `src/zeg.js` [D-75].
+8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration. Stryker changes only `src/zeg.js`, and the run fails below a mutation score of 100% [D-75].
 
 ## 2. The steps of zeg()
 
@@ -583,7 +583,7 @@ Source: D-54. Test: U.
 - Given the options `{ extra: 1 }`
 - When the test calls `zeg(options)`
 - Then the error text contains `extra`
-- The error text is not part of the API [D-54]. The tests check only these parts of the text.
+- The error text is not part of the API [D-54]. The tests check only these parts of the text and the start of the text (REQ-113).
 
 #### REQ-057 zeg() stops at the first check that fails
 
@@ -627,6 +627,7 @@ Source: D-27, D-45. Test: U.
 - And each of these values: `undefined`, `null`, `1`, `'x'`, `true`, `Symbol()`, `1n`, `() => {}`, `A` (the class itself), `[]`, `{}`, `Object.create(null)`
 - When the test calls `command(value)` and `query(value)`
 - Then each Promise rejects with a `TypeError`, which is not a `ZegError`
+- **(spec detail)** And the text of the `TypeError` starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
 
 #### REQ-062 The check of the message comes before the NOT_CONFIGURED check
 
@@ -936,7 +937,7 @@ Source: D-53. Test: U.
 - Given each `ZegError` that zeg creates in the scenarios of a test file
 - When a helper of that test file reads the error
 - Then its `code` is `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` or `UNDEFINED_RESULT`
-- **(spec detail)** And its `message` is a string that is not empty
+- **(spec detail)** And its `message` starts with `zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
 
 ### 4.12 Build and runtime
 
@@ -1068,11 +1069,12 @@ These rules come from this spec, not from a decision. When the user approves pha
 17. The hint in the error text contains the literal text `command()` or `query()` (REQ-073).
 18. `command()` and `query()` return a native `Promise` (REQ-060).
 19. `new ZegError(code)` without a second argument has the `message` `''`, as for `Error` (REQ-111).
-20. The `message` of each `ZegError` that zeg creates is a string that is not empty (REQ-113).
+20. The `message` of each `ZegError` that zeg creates starts with `zeg(): `, `command(): ` or `query(): `, followed by a description (REQ-113).
 21. `LICENSE` contains the text `MIT License` (REQ-004).
 22. `examples/basic-worker/` contains the example project of syntax.md section 3, plus the route `GET /wrong-kind` (REQ-120).
 23. The example Worker has no `compatibility_flags` (REQ-123).
 24. The coverage report must contain `src/zeg.js` with more than 0 statements (REQ-131).
+25. The text of the `TypeError` for an invalid message starts with `command(): ` or `query(): `, followed by a description (REQ-061).
 
 ## 6. Decisions and requirements
 

@@ -217,10 +217,12 @@ describe('1.5 test environment', () => {
     for (const project of config.test.projects) {
       expect(project.test).not.toHaveProperty('setupFiles');
     }
-    // The mutation tests use only the unit project of this configuration, and Stryker changes only src/zeg.js.
+    // The mutation tests use only the unit project of this configuration. Stryker changes only src/zeg.js,
+    // and the run fails below a score of 100%.
     const mutation = await import(pathToFileURL(join(ROOT, 'vitest.mutation.config.js')).href);
     expect(mutation.default.test.projects).toEqual([config.test.projects[0]]);
     const stryker = await import(pathToFileURL(join(ROOT, 'stryker.config.js')).href);
     expect(stryker.default.mutate).toEqual(['src/zeg.js']);
+    expect(stryker.default.thresholds.break).toBe(100);
   });
 });

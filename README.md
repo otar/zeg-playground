@@ -170,10 +170,10 @@ The mutation tests are optional, and GitHub Actions does not run them. Stryker m
 
 To run the mutation tests, do these steps:
 
-1. Run `npm run test:mutation`. The command needs approximately 3 minutes.
+1. Run `npm run test:mutation`. The command needs 2 to 3 minutes.
 2. Open `reports/mutation/mutation.html` in a browser.
 
-Some mutants that change only the error text survive, because the error text is not part of the API (D-54).
+If one or more mutants survive, the command fails (D-75).
 
 To make the next runs faster, use `npm run test:mutation -- --incremental`. The first run with `--incremental` tests all mutants and writes `reports/stryker-incremental.json`. The next runs with `--incremental` test only the changed mutants and the mutants of the changed tests. Stryker does not see changes in the test helpers, the fixtures or the configuration. After such a change, run `npm run test:mutation` without `--incremental`.
 

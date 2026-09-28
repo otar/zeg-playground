@@ -9,12 +9,15 @@ export const CODES = ['INVALID_CONFIG', 'NOT_CONFIGURED', 'HANDLER_NOT_FOUND', '
 // and as a result its own copy of this list.
 export const seen = [];
 
-// REQ-113: a ZegError from zeg has a known code and a message that is a string and not empty.
+// The start of each error text of zeg: the name of the function, then a description (REQ-061, REQ-113).
+export const TEXT_START = /^(zeg|command|query)\(\): \S/;
+
+// REQ-113: a ZegError from zeg has a known code, and its message starts with TEXT_START.
 export function checkKnown(error) {
   expect(error).toBeInstanceOf(ZegError);
   expect(CODES).toContain(error.code);
   expect(typeof error.message).toBe('string');
-  expect(error.message.length).toBeGreaterThan(0);
+  expect(error.message).toMatch(TEXT_START);
   seen.push(error);
   return error;
 }

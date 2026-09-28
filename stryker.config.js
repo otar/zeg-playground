@@ -13,6 +13,8 @@ export default {
   concurrency: '50%',
   reporters: ['clear-text', 'progress', 'html'],
   htmlReporter: { fileName: 'reports/mutation/mutation.html' },
+  // The command fails if the tests kill less than 100% of the mutants.
+  thresholds: { high: 100, low: 100, break: 100 },
   // Stryker does not read .gitignore. It does not copy these folders into its temporary copies.
   ignorePatterns: ['coverage', 'dist', '.wrangler', 'examples'],
 };

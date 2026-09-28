@@ -20,8 +20,8 @@ describe('4.6 dispatch: the message', () => {
   it('REQ-061 the Promise rejects with a TypeError for an invalid message', async () => {
     zeg({ commands: cmd, queries: qry });
     for (const value of invalidMessages()) {
-      await expectTypeError(command(value));
-      await expectTypeError(query(value));
+      expect((await expectTypeError(command(value))).message).toMatch(/^command\(\): \S/);
+      expect((await expectTypeError(query(value))).message).toMatch(/^query\(\): \S/);
     }
     expect(calls).toEqual([]);
   });
