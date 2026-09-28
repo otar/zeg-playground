@@ -118,7 +118,7 @@ To change a decision, change this file first. Then update the documents that ref
 ## Package
 
 - **D-55** The name of the library is zeg. The npm package is `@otar/zeg`.
-- **D-56** `package.json` has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/index.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
+- **D-56** `package.json` has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
 - **D-57** The package has no build step and no type declarations.
 - **D-58** The license is MIT, with `Copyright (c) 2026 Otar Chekurishvili`.
 - **D-59** The README lists the tested versions: Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
@@ -128,7 +128,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-61** Phase 1 writes `docs/decisions.md` and `docs/syntax.md`. `docs/decisions.md` lists all decisions with numbers. `docs/syntax.md` shows a complete example project, each export with its signature, the error codes and the rules for files and pairs. Phase 1 writes no implementation.
 - **D-62** Phase 2 writes `docs/spec.md`. The spec has numbered requirements, and each requirement has a Given / When / Then check.
-- **D-63** Phase 3 writes `src/index.js`, `README.md` and `examples/basic-worker/`. **(detail)** It also writes `LICENSE` and `package.json`.
+- **D-63** Phase 3 writes `src/index.js` (since revision 6: `src/zeg.js`), `README.md` and `examples/basic-worker/`. **(detail)** It also writes `LICENSE` and `package.json`.
 - **D-64** Phase 4 writes one or more tests for each requirement in `docs/spec.md`. It also writes the checks in D-69 to D-72.
 - **D-65** After each phase, the work stops until the user approves the phase.
 - **D-66** All work is on the `main` branch. If `main` does not exist, phase 1 creates it. Each phase ends with a push of one commit to `origin main`. **(detail)** If the user asks for changes after a push, a new commit contains the changes. Nobody force-pushes `main`.
@@ -138,8 +138,8 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-68** The unit tests run with Vitest 4.1 and `@cloudflare/vitest-plugin`, in workerd. **(detail)** The build tests and the static checks run in Node, because they start processes and read files.
 - **D-69** A production build test runs `vite build` on `examples/basic-worker/`. It then sends HTTP requests to the built Worker in local workerd.
-- **D-70** Istanbul measures the coverage of `src/index.js`. Lines, branches, functions and statements must all have 100% coverage.
-- **D-71** The size of `src/index.js` after `esbuild --minify --format=esm` and `gzip -9` must be 1536 bytes or less.
+- **D-70** Istanbul measures the coverage of `src/zeg.js`. Lines, branches, functions and statements must all have 100% coverage.
+- **D-71** The size of `src/zeg.js` after `esbuild --minify --format=esm` and `gzip -9` must be 1536 bytes or less.
 - **D-72** A GitHub Actions workflow runs all tests and checks, except the mutation tests (D-75), on each push to `main`, with Node 22.
 
 ## Tooling (revision 5)
@@ -147,7 +147,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-73** The repository has no `.npmrc` file, so npm checks the peer dependencies of each package. `package.json` has no `overrides` field. `devDependencies` lists only the packages that the project uses directly. **(detail)** npm 10 cannot resolve the dependencies without a lockfile (background fact 19). For this reason, a change to the dependencies or to `package-lock.json` must use npm 11.6 or later. CI uses `npm ci`, which works with npm 10.
 - **D-74** Prettier formats the JavaScript, JSON, YAML and Markdown files. ESLint checks the JavaScript files and the JavaScript code blocks in the Markdown files. The ESLint rule `curly` with the option `all` requires braces for the body of each `if`, `else`, `for`, `while` and `do` statement (background fact 20).
   - **(detail)** The layout has 2 spaces, single quotes, semicolons, trailing commas and a line width of 100. `npm run lint` checks the style, and `npm run lint:fix` corrects it. A static check runs the same tools, so `npm test` and CI fail if the style is not correct. `package.json` gives an exact version for Prettier, because a new version can change the layout.
-- **D-75** The mutation tests are optional. CI does not run them, and no minimum score applies. `npm run test:mutation` runs Stryker with `@stryker-mutator/vitest-runner` (background fact 21). Stryker changes only `src/index.js`, and it runs only the unit tests, in workerd.
+- **D-75** The mutation tests are optional. CI does not run them, and no minimum score applies. `npm run test:mutation` runs Stryker with `@stryker-mutator/vitest-runner` (background fact 21). Stryker changes only `src/zeg.js`, and it runs only the unit tests, in workerd.
   - **(detail)** `vitest.mutation.config.js` contains only the unit project of `vitest.config.js`. For each mutant, Stryker runs only the unit tests that cover the mutant. The REQ-113 tests depend on the order of the tests in their file, but they cover no mutant. The report is `reports/mutation/mutation.html`, and the temporary copies are in `.stryker-tmp/`. Git, Prettier and ESLint ignore the two folders.
 
 ## Background facts
@@ -174,7 +174,7 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 18. The deep freeze of revision 2 needed 22 ms for a message with an array of 10,000 plain objects. This test ran in Node 22, which uses V8, the same engine as workerd. The Workers Free plan allows 10 ms of CPU time for each request. The deep-freeze code of the lab prototype was 128 bytes after minify and gzip.
 19. npm 10.9 stops with the error `Cannot read properties of null (reading 'edgesOut')` when it resolves the development dependencies without a lockfile. The cause is an optional peer dependency `vitest: "*"`. It comes from `vite` 8 through `@vitejs/devtools` and `@vitejs/devtools-vitest`. Since 2026-09-03, the range `*` selects vitest 5, and npm 10 then stops with this error. npm 11.6.0 contains the fix, but npm 10 does not. With an existing lockfile, `npm ci` and `npm install` work with npm 10.
 20. StandardJS, Airbnb and Google set the ESLint rule `curly` to `multi-line`. This setting allows `if (x) doSomething();`. Of the widely used style guides, only XO requires braces, but XO uses tabs and adds many other rules. Prettier does not add or remove braces. `eslint --fix` with `curly: 'all'` adds the braces safely. Biome marks the fix of its rule `useBlockStatements` as unsafe, and in a test this fix wrote a file that did not parse.
-21. Stryker 10.0.0 with `@stryker-mutator/vitest-runner` runs the unit tests in workerd, because `@cloudflare/vitest-plugin` sets its own test pool. This runner always selects the tests for each mutant by coverage, and the setting `coverageAnalysis` has no effect on it. The command runner of Stryker does not work with workerd, because the active mutant does not reach workerd. With it, all mutants survive. On 2026-09-27, Stryker made 222 mutants of `src/index.js`, and the tests killed 209. All 13 survivors change only the error text, which is not part of the API (D-54).
+21. Stryker 10.0.0 with `@stryker-mutator/vitest-runner` runs the unit tests in workerd, because `@cloudflare/vitest-plugin` sets its own test pool. This runner always selects the tests for each mutant by coverage, and the setting `coverageAnalysis` has no effect on it. The command runner of Stryker does not work with workerd, because the active mutant does not reach workerd. With it, all mutants survive. On 2026-09-27, Stryker made 222 mutants of `src/zeg.js`, and the tests killed 209. All 13 survivors change only the error text, which is not part of the API (D-54).
 
 ## History
 
@@ -194,3 +194,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The repository no longer uses the npm setting `legacy-peer-deps`. Revision 5 added D-73 and background fact 19.
   - The code has braces on all statements, and Prettier and ESLint check the style. Revision 5 added D-74 and background fact 20. The spec added REQ-134.
   - The repository has optional mutation tests with Stryker. Revision 5 added D-75 and background fact 21, and it changed D-72. The spec changed REQ-133 and rule 8 of section 1.5. The mutation tests found a gap in the test of REQ-041, so REQ-041 now also lists `null` and `{ prototype: {} }`.
+- **Revision 6** (after revision 5): the user asked for six changes.
+  - The library file `src/index.js` became `src/zeg.js`, because `index.js` is also the name of the Worker entry file of a user project and of the example. This changed D-56, D-63 (a note), D-70, D-71, D-75 and background fact 21. The spec changed rule 4 and rule 8 of section 1.5, REQ-002, REQ-003, REQ-006, REQ-131, REQ-132 and spec detail 24. In `docs/syntax.md` section 3.8, the glob files of the feature folders became `globs.js`.

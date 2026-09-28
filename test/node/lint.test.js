@@ -58,7 +58,7 @@ describe('4.13 non-functional checks', () => {
   it('REQ-134 the rule curly requires braces in the JavaScript files and in the Markdown code blocks', async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const files = [
-      'src/index.js',
+      'src/zeg.js',
       'test/helpers.js',
       'test/node/lint.test.js',
       'scripts/check-coverage.js',
@@ -110,7 +110,7 @@ describe('4.13 non-functional checks', () => {
   }, 60_000);
 
   it('REQ-134 the Prettier configuration has the decided layout, and Prettier has an exact version', async () => {
-    const config = await prettier.resolveConfig(join(ROOT, 'src/index.js'));
+    const config = await prettier.resolveConfig(join(ROOT, 'src/zeg.js'));
     expect(config).toMatchObject({
       printWidth: 100,
       tabWidth: 2,

@@ -306,20 +306,20 @@ zeg({
 If each feature folder has its own glob in its own file, give the glob outputs as an array [D-09]:
 
 ```js
-// src/users/zeg.js
+// src/users/globs.js
 export const commands = import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true });
 ```
 
 ```js
-// src/billing/zeg.js
+// src/billing/globs.js
 export const commands = import.meta.glob(['./commands/**/*.js', '!**/_*.js'], { eager: true });
 ```
 
 ```js
 // src/index.js
 import { zeg } from '@otar/zeg';
-import { commands as userCommands } from './users/zeg.js';
-import { commands as billingCommands } from './billing/zeg.js';
+import { commands as userCommands } from './users/globs.js';
+import { commands as billingCommands } from './billing/globs.js';
 
 zeg({ commands: [userCommands, billingCommands] });
 

@@ -80,11 +80,11 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 1. The unit tests (type U) run in workerd with Vitest 4.1 and `@cloudflare/vitest-plugin` [D-68].
 2. The Wrangler configuration of the unit tests has no `main`. As a result, no Worker entry file exists, and no entry file runs before the tests (see background fact 13).
 3. No setup file of the unit tests calls `zeg()`.
-4. The unit tests import the library as `'@otar/zeg'`. The package refers to itself through its `exports` field, so the import resolves to `src/index.js` at the repository root. If Vite does not resolve the package name, the Vitest configuration adds an alias from `@otar/zeg` to `./src/index.js`.
+4. The unit tests import the library as `'@otar/zeg'`. The package refers to itself through its `exports` field, so the import resolves to `src/zeg.js` at the repository root. If Vite does not resolve the package name, the Vitest configuration adds an alias from `@otar/zeg` to `./src/zeg.js`.
 5. The tests of REQ-053, REQ-060 and REQ-062 need a module state without a call to `zeg()`. Each of these requirements has its own test file. Each such file runs its scenarios in the order of the requirement.
 6. The tests in one file run one after the other. They do not use `.concurrent`.
 7. The build tests (type B) and the static checks (types S and N) run in Node, because they start processes and read files [D-68].
-8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration [D-75].
+8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration. Stryker changes only `src/zeg.js` [D-75].
 
 ## 2. The steps of zeg()
 
@@ -167,9 +167,9 @@ Source: D-01, D-02, D-05. Test: U.
 
 Source: D-03. Test: S.
 
-- Given the file `src/index.js`
+- Given the file `src/zeg.js`
 - When a static check bundles it with esbuild and reads the metafile
-- Then the metafile lists no imports for `src/index.js`
+- Then the metafile lists no imports for `src/zeg.js`
 
 #### REQ-003 package.json has the decided fields
 
@@ -177,7 +177,7 @@ Source: D-55, D-56, D-57. Test: S.
 
 - Given the file `package.json`
 - When a static check reads it
-- Then it has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/index.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
+- Then it has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
 - And it has no `private`, `peerDependencies`, `types` or `typings` field
 - And its `dependencies` field is missing or empty
 - And its `scripts` field has no `build`, `prepare` or `prepublishOnly` script
@@ -205,7 +205,7 @@ Source: D-60. Test: S.
 
 - Given the repository
 - When a static check lists its files
-- Then the repository contains `package.json`, `package-lock.json` and `src/index.js` at its root
+- Then the repository contains `package.json`, `package-lock.json` and `src/zeg.js` at its root
 
 ### 4.2 zeg(): argument and options
 
@@ -1002,15 +1002,15 @@ Source: D-68. Test: S.
 Source: D-70. Test: N.
 
 - Given the unit tests
-- When Vitest runs them with Istanbul coverage for `src/index.js`
+- When Vitest runs them with Istanbul coverage for `src/zeg.js`
 - Then lines, branches, functions and statements all have 100% coverage
-- **(spec detail)** And the coverage report contains `src/index.js` with more than 0 statements
+- **(spec detail)** And the coverage report contains `src/zeg.js` with more than 0 statements
 
 #### REQ-132 The library is small
 
 Source: D-71. Test: N.
 
-- Given `src/index.js`
+- Given `src/zeg.js`
 - When a check runs `esbuild --minify --format=esm` and then `gzip -9` on it
 - Then the result is 1536 bytes or less
 
@@ -1071,7 +1071,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 21. `LICENSE` contains the text `MIT License` (REQ-004).
 22. `examples/basic-worker/` contains the example project of syntax.md section 3, plus the route `GET /wrong-kind` (REQ-120).
 23. The example Worker has no `compatibility_flags` (REQ-123).
-24. The coverage report must contain `src/index.js` with more than 0 statements (REQ-131).
+24. The coverage report must contain `src/zeg.js` with more than 0 statements (REQ-131).
 
 ## 6. Decisions and requirements
 

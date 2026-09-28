@@ -46,7 +46,7 @@ function readJsonc(path) {
 describe('4.1 package', () => {
   it('REQ-002 the library imports no modules (esbuild metafile)', async () => {
     const result = await build({
-      entryPoints: [join(ROOT, 'src/index.js')],
+      entryPoints: [join(ROOT, 'src/zeg.js')],
       bundle: true,
       format: 'esm',
       write: false,
@@ -56,8 +56,8 @@ describe('4.1 package', () => {
       logLevel: 'silent',
     });
     const inputs = result.metafile.inputs;
-    expect(Object.keys(inputs)).toEqual(['src/index.js']);
-    expect(inputs['src/index.js'].imports).toEqual([]);
+    expect(Object.keys(inputs)).toEqual(['src/zeg.js']);
+    expect(inputs['src/zeg.js'].imports).toEqual([]);
   });
 
   it('REQ-003 package.json has the decided fields', () => {
@@ -65,7 +65,7 @@ describe('4.1 package', () => {
     expect(pkg.name).toBe('@otar/zeg');
     expect(pkg.version).toBe('0.1.0');
     expect(pkg.type).toBe('module');
-    expect(pkg.exports).toBe('./src/index.js');
+    expect(pkg.exports).toBe('./src/zeg.js');
     expect(pkg.license).toBe('MIT');
     expect(pkg.publishConfig).toEqual({ access: 'public' });
     for (const field of ['private', 'peerDependencies', 'types', 'typings']) {
@@ -91,8 +91,8 @@ describe('4.1 package', () => {
   });
 
   it('REQ-006 the library is at the repository root, and npm is the package manager', () => {
-    const files = gitFiles('package.json', 'package-lock.json', 'src/index.js');
-    expect(files.sort()).toEqual(['package-lock.json', 'package.json', 'src/index.js']);
+    const files = gitFiles('package.json', 'package-lock.json', 'src/zeg.js');
+    expect(files.sort()).toEqual(['package-lock.json', 'package.json', 'src/zeg.js']);
   });
 });
 
@@ -171,12 +171,12 @@ describe('4.13 non-functional checks', () => {
     expect(unit.plugins.flat(Infinity).map((plugin) => plugin.name)).toContain(pluginName);
   });
 
-  it('REQ-131 the coverage check uses Istanbul for src/index.js with thresholds of 100%', async () => {
+  it('REQ-131 the coverage check uses Istanbul for src/zeg.js with thresholds of 100%', async () => {
     // `npm run coverage` measures the coverage. This test checks its configuration.
     const { default: config } = await import(pathToFileURL(join(ROOT, 'vitest.config.js')).href);
     expect(config.test.coverage).toMatchObject({
       provider: 'istanbul',
-      include: ['src/index.js'],
+      include: ['src/zeg.js'],
       thresholds: { 100: true },
     });
     expect(config.test.coverage.reporter).toContain('json-summary');
@@ -217,8 +217,10 @@ describe('1.5 test environment', () => {
     for (const project of config.test.projects) {
       expect(project.test).not.toHaveProperty('setupFiles');
     }
-    // The mutation tests use only the unit project of this configuration.
+    // The mutation tests use only the unit project of this configuration, and Stryker changes only src/zeg.js.
     const mutation = await import(pathToFileURL(join(ROOT, 'vitest.mutation.config.js')).href);
     expect(mutation.default.test.projects).toEqual([config.test.projects[0]]);
+    const stryker = await import(pathToFileURL(join(ROOT, 'stryker.config.js')).href);
+    expect(stryker.default.mutate).toEqual(['src/zeg.js']);
   });
 });

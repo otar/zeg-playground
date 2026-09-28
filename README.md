@@ -151,7 +151,7 @@ To run the tests of zeg, do these steps in the repository root:
 
 1. Run `npm ci`.
 2. Run `npm test`. This command runs all tests and checks, except the coverage check and the mutation tests. It also checks the style of the code (see below).
-3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/index.js` is 100%.
+3. Run `npm run coverage`. This command runs the unit tests with Istanbul and checks that the coverage of `src/zeg.js` is 100%.
 
 The unit tests run in workerd with Vitest and `@cloudflare/vitest-plugin`. The build tests and the static checks run in Node. The build tests install the packages of `examples/basic-worker/` in a temporary folder, so they need access to the npm registry. To run only the unit tests, run `npm run test:unit`.
 
@@ -166,7 +166,7 @@ To change the dependencies, use npm 11.6 or later, for example `npx npm@11 insta
 
 ### Mutation tests
 
-The mutation tests are optional, and GitHub Actions does not run them. Stryker makes small changes (mutants) in `src/index.js`. For each mutant, it runs the unit tests in workerd. If a test fails, the test kills the mutant. If no test fails, the mutant survives. A mutant that survives shows a gap in the tests.
+The mutation tests are optional, and GitHub Actions does not run them. Stryker makes small changes (mutants) in `src/zeg.js`. For each mutant, it runs the unit tests in workerd. If a test fails, the test kills the mutant. If no test fails, the mutant survives. A mutant that survives shows a gap in the tests.
 
 To run the mutation tests, do these steps:
 

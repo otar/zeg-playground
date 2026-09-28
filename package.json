@@ -17,7 +17,7 @@
     "url": "git+https://github.com/otar/zeg-playground.git"
   },
   "type": "module",
-  "exports": "./src/index.js",
+  "exports": "./src/zeg.js",
   "files": [
     "src"
   ],

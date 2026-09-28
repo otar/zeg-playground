@@ -9,7 +9,7 @@ const ROOT = resolve(import.meta.dirname, '../..');
 it('REQ-132 the library is small: esbuild --minify --format=esm, then gzip -9, is 1536 bytes or less', () => {
   const minified = execFileSync(
     join(ROOT, 'node_modules/.bin/esbuild'),
-    ['src/index.js', '--minify', '--format=esm'],
+    ['src/zeg.js', '--minify', '--format=esm'],
     {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],

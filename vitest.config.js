@@ -25,7 +25,7 @@ export default defineConfig({
     // REQ-131: `npm run coverage` runs the unit project with --coverage.
     coverage: {
       provider: 'istanbul',
-      include: ['src/index.js'],
+      include: ['src/zeg.js'],
       reporter: [['text', { skipFull: false }], 'json-summary'],
       reportsDirectory: './coverage',
       thresholds: { 100: true },
