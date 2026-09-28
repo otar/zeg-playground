@@ -976,7 +976,7 @@ Source: D-38, D-69. Test: B.
 - Given a copy of the example with the added file `src/commands/Orphan.js`, which has a default class and no handler file
 - When the test runs `vite build`, and then tries to start the Worker with `vite preview` and with `vite dev`
 - Then `vite build` succeeds
-- And for `vite preview` and for `vite dev`, the console output of the process contains `ZegError`, and no HTTP request to the Worker succeeds within 30 seconds
+- And for `vite preview` and for `vite dev`, the console output of the process contains `ZegError`, and no HTTP request to the Worker succeeds within 30 seconds, or before the process stops
 
 #### REQ-123 The example Worker needs no compatibility flags
 

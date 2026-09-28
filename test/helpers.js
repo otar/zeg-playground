@@ -20,14 +20,8 @@ export function checkKnown(error) {
 }
 
 // REQ-113: the last test of each test file calls this function. `codes` are the codes that the file expects.
+// checkKnown() checked each error in `seen` before it added the error.
 export function checkSeen(codes) {
-  expect(seen.length).toBeGreaterThan(0);
-  for (const error of seen) {
-    expect(error).toBeInstanceOf(ZegError);
-    expect(CODES).toContain(error.code);
-    expect(typeof error.message).toBe('string');
-    expect(error.message).not.toBe('');
-  }
   expect([...new Set(seen.map((error) => error.code))].sort()).toEqual([...codes].sort());
 }
 

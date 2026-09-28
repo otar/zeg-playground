@@ -193,7 +193,8 @@ describe('4.12 build and runtime', () => {
         const statuses = [];
         try {
           const end = Date.now() + 30_000;
-          while (Date.now() < end) {
+          // A process that stopped cannot answer a request later.
+          while (Date.now() < end && !server.exited) {
             const requests = [
               [
                 `${server.url}/`,
@@ -217,9 +218,9 @@ describe('4.12 build and runtime', () => {
             await sleep(1_000);
           }
           const results = [...new Set(statuses)].join(', ');
-          const exited = server.exited ? 'the process stopped' : 'the process runs';
+          const exited = server.exited ? 'the process stopped' : 'the process runs after 30 s';
           console.log(
-            `REQ-122 vite ${mode}: ${statuses.length} requests, results: ${results}, after 30 s ${exited}`,
+            `REQ-122 vite ${mode}: ${statuses.length} requests, results: ${results}, ${exited}`,
           );
           expect(
             statuses.filter((status) => status >= 200 && status < 300),
