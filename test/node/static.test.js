@@ -75,7 +75,7 @@ describe('4.1 package', () => {
   it('REQ-003 package.json has the decided fields', () => {
     const pkg = readJson('package.json');
     expect(pkg.name).toBe('@otar/zeg');
-    expect(pkg.version).toBe('0.1.0');
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
     expect(pkg.type).toBe('module');
     expect(pkg.exports).toBe('./src/zeg.js');
     expect(pkg.license).toBe('MIT');
@@ -105,6 +105,13 @@ describe('4.1 package', () => {
   it('REQ-006 the library is at the repository root, and npm is the package manager', () => {
     const files = gitFiles('package.json', 'package-lock.json', 'src/zeg.js');
     expect(files.sort()).toEqual(['package-lock.json', 'package.json', 'src/zeg.js']);
+  });
+
+  it('REQ-007 the changelog lists the version of the package', () => {
+    const pkg = readJson('package.json');
+    const headings = read('CHANGELOG.md').match(/^## .+$/gm);
+    expect(headings.map((heading) => heading.split(' ')[1])).toContain(pkg.version);
+    expect(pkg.files).toContain('CHANGELOG.md');
   });
 });
 

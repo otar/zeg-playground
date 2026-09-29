@@ -119,7 +119,7 @@ To change a decision, change this file first. Then update the documents that ref
 ## Package
 
 - **D-55** The name of the library is zeg. The npm package is `@otar/zeg`.
-- **D-56** `package.json` has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
+- **D-56** `package.json` has `"name": "@otar/zeg"`, a `"version"` that is a valid semantic version number (for example `"0.1.0"`, D-79), `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
 - **D-57** The package has no build step. It contains the source file `src/zeg.js` and the type declaration file `src/zeg.d.ts`. **(detail)** `npm run types` generates `src/zeg.d.ts` from the docblocks of `src/zeg.js` (D-76) with TypeScript 7, and the repository contains the result. A static check makes sure that the committed file is the same as a new output. TypeScript finds the file next to `src/zeg.js` through the `exports` field, so `package.json` has no `types` field (background fact 24).
 - **D-58** The license is MIT, with `Copyright (c) 2026 Otar Chekurishvili`.
 - **D-59** The README lists the tested versions: Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
@@ -163,6 +163,10 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-78** Message files and handler files can be `.js` files or `.ts` files. A pair uses one extension: `X.js` with `XHandler.js`, or `X.ts` with `XHandler.ts`. Vite transforms the `.ts` files.
   - **(detail)** A file path that ends in `.d.ts` is not valid, because such a file contains only types. The extensions `.tsx`, `.mts`, `.cts`, `.jsx`, `.mjs` and `.cjs` are also not valid.
   - **(detail)** A `.js` pair and a `.ts` pair with the same name can be in one folder. Both pairs have the same key, so their error texts use the same key.
+
+## Versioning (revision 8)
+
+- **D-79** zeg follows semantic versioning. The API is the four exports, the option names, the rules for files and pairs, the class `ZegError` and its codes. The error texts are not API (D-54). Before version 1.0.0, a new minor version can change the API. `CHANGELOG.md` lists the changes of each version, and the package contains this file. **(detail)** The version stays `0.1.0` until the first publish. Its section in `CHANGELOG.md` has the mark "unreleased".
 
 ## Background facts
 
@@ -235,3 +239,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - Message files and handler files can be `.ts` files, and a pair uses one extension. zeg rejects `.d.ts` files. Revision 8 added D-78, and it changed the terms Handler file, Message file and Key, D-11, D-15 and D-37. The spec added REQ-035 and REQ-036, and it changed section 1.4, section 2, REQ-017, REQ-028, REQ-029 and REQ-057.
   - The package contains `src/zeg.d.ts`, which TypeScript 7 generates from the docblocks. Strict TypeScript projects no longer get the error TS7016. Revision 8 added background fact 24, and it changed D-57, D-74, D-77 and background fact 23. The spec added REQ-137 and REQ-138, and it changed REQ-003 and REQ-134. The ZegError docblock example now shows that a ZegError is a bug in the project.
   - The README has a "Why zeg" section and a sentence about new IDs. `docs/syntax.md` section 6.4 shows one error boundary: the project's own errors map to 4xx, and each other error, also each `ZegError`, gives 500.
+  - zeg follows semantic versioning, and `CHANGELOG.md` lists the changes. Revision 8 added D-79 and changed D-56. The spec added REQ-007 and changed REQ-003.

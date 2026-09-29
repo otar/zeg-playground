@@ -174,6 +174,10 @@ If the message is `null`, a primitive, a function, an array or a plain object, t
 
 `zeg()` runs when the Worker starts. As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
 
+## Versioning
+
+zeg follows semantic versioning. The API is the four exports, the option names, the rules for files and pairs, the class `ZegError` and its codes. The error texts are not part of the API. Before version 1.0.0, a new minor version can change the API. `CHANGELOG.md` lists the changes.
+
 ## Tests
 
 To run the tests of zeg, do these steps in the repository root:

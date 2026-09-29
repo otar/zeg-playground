@@ -179,7 +179,7 @@ Source: D-55, D-56, D-57. Test: S.
 
 - Given the file `package.json`
 - When a static check reads it
-- Then it has `"name": "@otar/zeg"`, `"version": "0.1.0"`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
+- Then it has `"name": "@otar/zeg"`, a `"version"` in the form `major.minor.patch`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
 - And it has no `private`, `peerDependencies`, `types` or `typings` field
 - And its `dependencies` field is missing or empty
 - And its `scripts` field has no `build`, `prepare` or `prepublishOnly` script
@@ -208,6 +208,15 @@ Source: D-60. Test: S.
 - Given the repository
 - When a static check lists its files
 - Then the repository contains `package.json`, `package-lock.json` and `src/zeg.js` at its root
+
+#### REQ-007 The changelog lists the version of the package
+
+Source: D-79. Test: S.
+
+- Given `package.json` and `CHANGELOG.md`
+- When a static check reads them
+- Then `CHANGELOG.md` has a heading `## <version>` for the version of `package.json`
+- And the `files` field of `package.json` contains `CHANGELOG.md`
 
 ### 4.2 zeg(): argument and options
 
@@ -1262,3 +1271,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-76 | REQ-135 |
 | D-77 | REQ-136, REQ-138 |
 | D-78 | REQ-017, REQ-028, REQ-035, REQ-036 |
+| D-79 | REQ-003, REQ-007 |

@@ -19,7 +19,8 @@
   "type": "module",
   "exports": "./src/zeg.js",
   "files": [
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public"
