@@ -400,6 +400,7 @@ A glob output is the result of `import.meta.glob(patterns, { eager: true })`.
 
 - A glob output is a plain object. Each property name is a file path. Each property value is the module of that file (background fact 3).
 - An array of glob outputs is useful when the globs are in different files (section 3.8). An empty array is valid [D-09].
+- A glob output with no files is not valid, because this shows a glob pattern with no match. If a kind has no files yet, leave out its option or its array entry [D-09].
 - An option with the value `undefined` is the same as a missing option [D-35].
 - `zeg()` checks all files, pairs and classes. If a check fails, it throws a `ZegError` with the code `INVALID_CONFIG` [D-37]. See section 6.1.
 - `zeg()` checks all options before it changes the registry. If it throws, the handlers of the previous call stay active [D-39].
@@ -533,6 +534,9 @@ zeg({ commands: [userCommands, 'x'] }); // an entry of the array is not a plain 
 
 zeg({ commands: import.meta.glob('./commands/**/*.js') });
 // a lazy glob: each value is a function, not a module
+
+zeg({ commands: import.meta.glob('./command/**/*.js', { eager: true }) });
+// a wrong folder: the glob output has no files
 
 zeg({ commands: { './commands/Ping.ts': { default: class {} } } });
 // the path does not end in .js

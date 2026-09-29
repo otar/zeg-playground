@@ -119,7 +119,12 @@ export function zeg(options) {
   const checked = [];
   for (const [kind, label, output] of outputs) {
     const files = new Map();
-    for (const path of Object.keys(output)) {
+    const paths = Object.keys(output);
+    // A glob pattern with no match gives an empty glob output. Vite does not warn about it.
+    if (paths.length === 0) {
+      fail(`${label}: the glob output has no files. Check the glob pattern`);
+    }
+    for (const path of paths) {
       const where = `${label} ${path}`;
       if (!path.endsWith('.js')) {
         fail(`${where}: the file path must end in .js`);

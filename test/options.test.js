@@ -1,4 +1,4 @@
-// docs/spec.md section 4.2: REQ-010 to REQ-018.
+// docs/spec.md section 4.2: REQ-010 to REQ-019.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command, query } from '@otar/zeg';
 import { A, B, BH, Q, cmd, qry, resetCalls } from './spec-fixtures.js';
@@ -130,6 +130,18 @@ describe('4.2 zeg(): argument and options', () => {
     expectHandled('A', m);
     // B is not in the registry
     await expectRejects('HANDLER_NOT_FOUND', command(new B(1)));
+  });
+
+  it('REQ-019 a glob output must contain at least one file', () => {
+    const symbolOnly = { [Symbol('B')]: { default: B } };
+    const hiddenOnly = {};
+    Object.defineProperty(hiddenOnly, './B.js', { value: { default: B }, enumerable: false });
+    for (const output of [{}, Object.create(null), symbolOnly, hiddenOnly]) {
+      expectThrows('INVALID_CONFIG', { commands: output });
+      expectThrows('INVALID_CONFIG', { queries: output });
+    }
+    const error = expectThrows('INVALID_CONFIG', { commands: [cmd, {}] });
+    expect(error.message).toContain('commands[1]');
   });
 
   it('REQ-113 the ZegErrors of this file have known codes', () => {

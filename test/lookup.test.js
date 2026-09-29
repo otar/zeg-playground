@@ -91,7 +91,7 @@ describe('4.7 dispatch: the lookup', () => {
   });
 
   it('REQ-074 the hint names the position in an array', async () => {
-    zeg({ commands: cmd, queries: [{}, qry] });
+    zeg({ commands: cmd, queries: [pairOf(B, BH, 'B'), qry] });
     const e = await expectRejects('HANDLER_NOT_FOUND', command(new Q(1)));
     expect(e.message).toContain('queries[1]');
   });

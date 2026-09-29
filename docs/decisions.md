@@ -41,7 +41,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Files and pairs
 
-- **D-09** The `commands` option supplies the command files, and the `queries` option supplies the query files. Each option is a glob output or an array of glob outputs. One glob can have several patterns, so one glob can find files in several folders. **(detail)** An empty array is valid.
+- **D-09** The `commands` option supplies the command files, and the `queries` option supplies the query files. Each option is a glob output or an array of glob outputs. One glob can have several patterns, so one glob can find files in several folders. **(detail)** An empty array is valid. **(detail)** A glob output with no files is not valid, because a glob pattern with no match gives an empty glob output. If a kind has no files yet, the project leaves out its option or its array entry.
 - **D-10** Each file in a glob output must be part of a pair.
 - **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for zeg.
 - **D-12** Files with the same name in different folders form different pairs. For example, `./commands/billing/Charge.js` and `./commands/shop/Charge.js` are valid together.
@@ -85,6 +85,7 @@ To change a decision, change this file first. Then update the documents that ref
   - The argument has a property other than `commands` and `queries`.
   - **(detail)** The value of `commands` or `queries` is not a plain object and not an array. An entry of such an array is not a plain object.
   - **(detail)** A value in a glob output is not an object. For example, a lazy glob supplies functions, which are not valid.
+  - **(detail)** A glob output has no file path.
   - **(detail)** A file path in a glob output does not end in `.js`.
   - A file has no default export.
   - A message file has no handler file in its folder in the same glob output.
@@ -217,3 +218,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 - **Revision 7** (after revision 6): the user asked for two changes.
   - zeg has no rule for helper files. The project decides with its globs which files zeg gets. Revision 7 removed D-14 and the term "Helper file", and it changed D-37. The spec changed REQ-030, REQ-032, REQ-034, REQ-120 and section 6. The lab tested the new layout of `docs/syntax.md` section 3.9 again (background fact 22). In `docs/syntax.md`, sections 3, 3.6 to 3.9, 6.1 and 7.2 changed. The example Worker and the test fixtures no longer have files whose names start with `_`. Only the README shows the pattern `'!**/_*.js'`, as an example.
   - The README shows zeg as a simple, opinionated CQRS library. It starts with the whole flow of a command and a query in one code block, and it lists the opinions of zeg. The code block contains six files, so it has the tag `jsx`. This added a detail to D-74 and a comment to `eslint.config.js`. The spec changed REQ-134.
+- **Revision 8** (after revision 7): the user selected improvements from a review of the codebase.
+  - `zeg()` rejects a glob output with no files, because a glob pattern with no match gives an empty glob output. This changed D-09 and D-37. The spec added REQ-019 and changed the Z4 row of section 2 and REQ-074.

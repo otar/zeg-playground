@@ -95,7 +95,7 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 | Z1 | Check that `options` is a plain object. | Throw `INVALID_CONFIG`. |
 | Z2 | Read the names of all own properties of `options`, also symbol names and the names of properties that are not enumerable. Check that each name is `commands` or `queries`. | Throw `INVALID_CONFIG`. |
 | Z3 | First for `commands`, then for `queries`, read the own property of `options` one time and make a list of glob outputs. For `undefined`, the list is empty. For a plain object, the list contains that object. For an array, the list contains the entries at the indexes 0 to `length - 1`. Each entry must be a plain object. | Throw `INVALID_CONFIG`. |
-| Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the path ends in `.js`. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
+| Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the glob output has at least one file path [D-09]. Check that the path ends in `.js`. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
 | Z5 | In each glob output, form the pairs. | Throw `INVALID_CONFIG`. |
 | Z6 | Across all glob outputs of both kinds, check that no two message classes have the same `prototype` object. | Throw `INVALID_CONFIG`. |
 | Z7 | Replace the registry with the new pairs. Mark zeg as configured. | This step cannot fail. |
@@ -297,6 +297,17 @@ Source: D-07. Test: U.
 - And a property `./B.js` that is not enumerable, with the module `{ default: B }`
 - When the test calls `zeg({ commands: output })` and then `await command(new A(1))`
 - Then `zeg()` returns `undefined`, and `AH` handles the message
+
+#### REQ-019 A glob output must contain at least one file
+
+Source: D-09, D-37. Test: U.
+
+- Given each of these glob outputs: `{}`, `Object.create(null)`, an object with only a property whose name is a symbol, and an object with only a property `./B.js` that is not enumerable
+- When the test calls `zeg({ commands: output })` and `zeg({ queries: output })`
+- Then each call throws `INVALID_CONFIG`
+- Given the options `{ commands: [cmd, {}] }`
+- When the test calls `zeg(options)`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `commands[1]`
 
 ### 4.3 zeg(): files and pairs
 
@@ -729,7 +740,7 @@ Source: D-47, D-48. Test: U.
 
 Source: D-48. Test: U.
 
-- Given `zeg({ commands: cmd, queries: [{}, qry] })`
+- Given `zeg({ commands: cmd, queries: [{ './B.js': { default: B }, './BHandler.js': { default: BH } }, qry] })`
 - When the test calls `command(new Q(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`, and the error text contains `queries[1]`
 
@@ -1128,7 +1139,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-06 | REQ-120 |
 | D-07 | REQ-016, REQ-018, REQ-032, REQ-120 |
 | D-08 | REQ-045, REQ-076, REQ-121 |
-| D-09 | REQ-014, REQ-015, REQ-075 |
+| D-09 | REQ-014, REQ-015, REQ-019, REQ-075 |
 | D-10 | REQ-021, REQ-022, REQ-030 |
 | D-11 | REQ-020 to REQ-025, REQ-027, REQ-031, REQ-034 |
 | D-12 | REQ-026, REQ-075 |
@@ -1151,7 +1162,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-30 to D-34 | Removed in revision 3 of `docs/decisions.md` |
 | D-35 | REQ-013, REQ-050, REQ-054 |
 | D-36 | REQ-051 |
-| D-37 | REQ-011, REQ-012, REQ-014 to REQ-017, REQ-021 to REQ-024, REQ-027 to REQ-030, REQ-032, REQ-033, REQ-040 to REQ-043, REQ-057 |
+| D-37 | REQ-011, REQ-012, REQ-014 to REQ-017, REQ-019, REQ-021 to REQ-024, REQ-027 to REQ-030, REQ-032, REQ-033, REQ-040 to REQ-043, REQ-057 |
 | D-38 | REQ-122 |
 | D-39 | REQ-052, REQ-055, REQ-057 |
 | D-40 | REQ-044 |
