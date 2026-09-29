@@ -69,7 +69,7 @@ The `users` Map is in the memory of one isolate, so this example is only a demo.
 
 ## Why Zeg
 
-**What CQRS means here.** A command changes state and returns nothing. A query reads data and returns a value. Each message class has one handler class. Zeg has no events, no event sourcing and no separate read store.
+**What CQRS means here.** A command changes state and returns nothing. A query reads data and returns a value. Each message class has one handler class. Zeg has no events, no event sourcing and no separate read store. For a side effect after a command, the command handler dispatches another command.
 
 **Why not a plain function call.**
 
@@ -80,7 +80,7 @@ The `users` Map is in the memory of one isolate, so this example is only a demo.
 **When not to use Zeg.**
 
 - The Worker has only a few routes, and a function call is sufficient.
-- You need middleware, events or a queue integration. Zeg does not have them.
+- You need events or a queue integration. Zeg does not have them.
 - You build the Worker with Wrangler only. Zeg needs Vite.
 
 ## Install
@@ -122,7 +122,7 @@ import { Zeg, command, query, ZegError } from '@otar/zeg';
 
 | Export | Description |
 | --- | --- |
-| `Zeg(options)` | Sets the pairs of message classes and handler classes. `options.commands` and `options.queries` are each a glob output or an array of glob outputs. Each call replaces all pairs. Returns `undefined`. |
+| `Zeg(options)` | Sets the pairs of message classes and handler classes. `options.commands` and `options.queries` are each a glob output or an array of glob outputs. `options.middleware` is an array of middleware functions. Each call replaces all pairs and all middleware functions. Returns `undefined`. |
 | `command(message)` | Dispatches a command. Returns a Promise that resolves to `undefined`. |
 | `query(message)` | Dispatches a query. Returns a Promise that resolves to the value from the handler. |
 | `ZegError` | The error class of Zeg. It has the properties `name` (`'ZegError'`), `code` and `message`. |
@@ -134,6 +134,43 @@ The package contains type declarations in `src/zeg.d.ts`. TypeScript generates t
 - A TypeScript project needs the `moduleResolution` value `bundler`, `node16` or `nodenext`.
 - In a JavaScript project with `checkJs`, the editor reports some incorrect calls as errors, for example `command('RegisterUser')`. Zeg also does all its checks at runtime.
 - The result type of `query()` is `unknown`. In TypeScript, write `query<User>(message)`. In JavaScript, write `/** @type {User} */` before the variable.
+- For a middleware function in TypeScript, use the type `Middleware`, for example `import type { Middleware } from '@otar/zeg'`.
+
+## Middleware
+
+A middleware function runs around the handler of each dispatch. Use it for work that many handlers need, for example a log, a check of the message or an error report.
+
+```js
+// src/middleware/logDispatch.js
+export async function logDispatch(message, next, { kind, key }) {
+  console.log(`${kind} ${key}`); // for example "command ./commands/RegisterUser"
+  try {
+    return await next();
+  } catch (error) {
+    console.error(`${kind} ${key} failed`, error);
+    throw error;
+  }
+}
+```
+
+```js
+// src/index.js
+import { Zeg } from '@otar/zeg';
+import { logDispatch } from './middleware/logDispatch.js';
+
+Zeg({
+  commands: import.meta.glob('./commands/**/*.js', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.js', { eager: true }),
+  middleware: [logDispatch],
+});
+```
+
+- `next()` runs the next middleware function, or the handler after the last function. For a query, it resolves to the result. For a command, it resolves to `undefined`.
+- The first function in the array is the outermost.
+- A middleware function can change the result of a query. It can stop a dispatch: it throws, or it returns without a call to `next()`.
+- Call `next()` one time. A second call rejects with `NEXT_CALLED_TWICE`.
+- Put the middleware files outside the folders of the globs, because each file that a glob finds must be part of a pair.
+- Section 3.11 of `docs/syntax.md` has all rules for middleware functions.
 
 ## Rules
 
@@ -167,9 +204,10 @@ Rules for the messages:
 | `INVALID_CONFIG` | `Zeg()` throws | The options, the files, the pairs or the classes are not valid. |
 | `NOT_CONFIGURED` | The Promise rejects | No call to `Zeg()` returned before the dispatch. |
 | `HANDLER_NOT_FOUND` | The Promise rejects | The class of the message has no pair of this kind. If it is a message of the other kind, the error text tells you to use the other function. |
-| `UNDEFINED_RESULT` | The Promise of `query()` rejects | The query handler returned `undefined`. |
+| `UNDEFINED_RESULT` | The Promise of `query()` rejects | The query handler or a middleware function returned `undefined`. |
+| `NEXT_CALLED_TWICE` | The Promise rejects | A middleware function called `next()` a second time. |
 
-If the message is `null`, a primitive, a function, an array or a plain object, the Promise rejects with a `TypeError`. If a handler constructor or `handle()` throws, the Promise rejects with the same value.
+If the message is `null`, a primitive, a function, an array or a plain object, the Promise rejects with a `TypeError`. If a handler constructor, `handle()` or a middleware function throws, the Promise rejects with the same value.
 
 `Zeg()` runs when the Worker starts. As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
 
