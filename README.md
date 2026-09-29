@@ -67,6 +67,23 @@ For a POST request with the body `{"email":"ada@example.com"}`, the Worker retur
 
 The `users` Map is in the memory of one isolate, so this example is only a demo.
 
+## Why zeg
+
+**What CQRS means here.** A command changes state and returns nothing. A query reads data and returns a value. Each message class has one handler class. zeg has no events, no event sourcing and no separate read store.
+
+**Why not a plain function call.**
+
+- The caller imports only the message class. It does not import the handler or the modules that the handler uses.
+- zeg checks all pairs when the Worker starts. A message file without a handler file stops `vite dev`, before the first request.
+- A test can replace a handler. It calls `zeg()` with a hand-written glob output (section 7.3 of `docs/syntax.md`).
+- The cost: each use case has one more file. "Go to definition" on `command(new X())` opens the message class, not the handler.
+
+**When not to use zeg.**
+
+- The Worker has only a few routes, and a function call is sufficient.
+- You need middleware, events or a queue integration. zeg does not have them.
+- You build the Worker with Wrangler only. zeg needs Vite.
+
 ## Install
 
 ```sh
@@ -142,6 +159,7 @@ Rules for the messages:
 - A message must be an instance of a class. It must not be an array or a plain object.
 - zeg does not freeze, copy or change the message.
 - A subclass is a different class. It needs its own pair.
+- A command returns nothing. To give the caller a new ID, create the ID in the message constructor, for example with `crypto.randomUUID()`.
 
 ## Errors
 

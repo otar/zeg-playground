@@ -658,25 +658,35 @@ These errors are not a `ZegError`:
 
 An error from `handle()` can be a `ZegError`. For example, a handler dispatches another message, and the Promise of that dispatch rejects with `HANDLER_NOT_FOUND`. zeg does not wrap this error. As a result, the caller cannot know if the error came from its own dispatch or from a nested dispatch.
 
-### 6.4 Example: catch an error
+### 6.4 Example: one error boundary
+
+A `ZegError` shows a bug in the project, for example a missing pair or a message of the wrong kind. Do not show it to the user as a normal result. Put one error boundary in `fetch()`:
 
 ```js
-import { command, ZegError } from '@otar/zeg';
-import RegisterUser from './commands/RegisterUser.js';
+// src/index.js
+import { NotFound } from './errors.js';
 
-async function register(email) {
-  try {
-    await command(new RegisterUser(email));
-  } catch (error) {
-    if (error instanceof ZegError && error.code === 'HANDLER_NOT_FOUND') {
-      // this can also come from a nested dispatch (section 6.3)
-      return new Response('not supported', { status: 501 });
+export default {
+  async fetch(request) {
+    try {
+      return await route(request);
+    } catch (error) {
+      if (error instanceof NotFound) {
+        return new Response('not found', { status: 404 });
+      }
+      console.error(error); // each other error, also each ZegError, is a bug
+      return new Response('internal error', { status: 500 });
     }
-    throw error; // for example an error from the handler
-  }
-  return new Response(null, { status: 204 });
-}
+  },
+};
 ```
+
+```js
+// src/errors.js (outside the command folders and the query folders)
+export class NotFound extends Error {}
+```
+
+A handler throws `new NotFound()`, and the Promise of the dispatch rejects with the same error [D-49]. The route `GET /wrong-kind` of the example Worker returns status 400 for a `ZegError` only to show the error in a test (REQ-120).
 
 ## 7. Tests
 
