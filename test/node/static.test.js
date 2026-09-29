@@ -233,7 +233,7 @@ describe('4.13 docblocks and the type check', () => {
     const source = read('src/zeg.js');
     const exports = [...source.matchAll(/^export .*$/gm)];
     expect(exports.map((match) => match[0].match(/^export (?:class|function) (\w+)/)?.[1])).toEqual(
-      ['ZegError', 'zeg', 'command', 'query'],
+      ['ZegError', 'Zeg', 'command', 'query'],
     );
     for (const match of exports) {
       expect(source.slice(0, match.index), match[0]).toMatch(/\/\*\*(?:(?!\*\/)[\s\S])*\*\/\n$/);
@@ -269,7 +269,7 @@ describe('4.13 docblocks and the type check', () => {
     }
   }, 60_000);
 
-  it('REQ-138 a strict TypeScript project can import zeg with the types of src/zeg.d.ts', () => {
+  it('REQ-138 a strict TypeScript project can import Zeg with the types of src/zeg.d.ts', () => {
     const { compilerOptions } = readJsonc('test/types/tsconfig.json');
     expect(compilerOptions).toMatchObject({ strict: true, noEmit: true, skipLibCheck: false });
     // With allowJs, TypeScript can read src/zeg.js in place of the missing .d.ts file.

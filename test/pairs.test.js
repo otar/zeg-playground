@@ -1,6 +1,6 @@
 // docs/spec.md section 4.3: REQ-020 to REQ-036.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, cmd, calls, resetCalls } from './spec-fixtures.js';
 import { checkSeen, expectHandled, expectThrows } from './helpers.js';
 import Ping from './fixtures/queries/Ping.js';
@@ -13,9 +13,9 @@ beforeEach(() => {
   resetCalls();
 });
 
-describe('4.3 zeg(): files and pairs', () => {
+describe('4.3 Zeg(): files and pairs', () => {
   it('REQ-020 a pair connects a message class to its handler class', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     const m = new A(1);
     await command(m);
     expect(calls).toHaveLength(1);
@@ -46,7 +46,7 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-025 pairs can be in subfolders', async () => {
-    zeg({
+    Zeg({
       commands: { './billing/A.js': { default: A }, './billing/AHandler.js': { default: AH } },
     });
     const m = new A(1);
@@ -55,7 +55,7 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-026 files with the same name in different folders form different pairs', async () => {
-    zeg({
+    Zeg({
       commands: {
         './billing/C.js': { default: A },
         './billing/CHandler.js': { default: AH },
@@ -111,7 +111,7 @@ describe('4.3 zeg(): files and pairs', () => {
       for (const [message, handler] of valid) {
         resetCalls();
         expect(
-          zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+          Zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
         ).toBeUndefined();
         const m = new A(1);
         await command(m);
@@ -128,7 +128,7 @@ describe('4.3 zeg(): files and pairs', () => {
     for (const [message, handler] of cases) {
       resetCalls();
       expect(
-        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+        Zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
       ).toBeUndefined();
       const m = new A(1);
       await command(m);
@@ -151,7 +151,7 @@ describe('4.3 zeg(): files and pairs', () => {
     for (const [message, handler] of paths) {
       resetCalls();
       expect(
-        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+        Zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
       ).toBeUndefined();
       const m = new A(1);
       await command(m);
@@ -165,7 +165,7 @@ describe('4.3 zeg(): files and pairs', () => {
       './fixtures/queries/Ping.js',
       './fixtures/queries/PingHandler.js',
     ]);
-    expect(zeg({ queries: output })).toBeUndefined();
+    expect(Zeg({ queries: output })).toBeUndefined();
     expect(await query(new Ping())).toBe('pong');
   });
 
@@ -215,7 +215,7 @@ describe('4.3 zeg(): files and pairs', () => {
     });
     expect(Object.keys(messages).sort()).toEqual(['./Ping.js', './sub/Ping.js']);
     expect(Object.keys(handlers).sort()).toEqual(['./PingHandler.js', './sub/PingHandler.js']);
-    expect(zeg({ queries: { ...messages, ...handlers } })).toBeUndefined();
+    expect(Zeg({ queries: { ...messages, ...handlers } })).toBeUndefined();
     expect(await query(new SplitPing())).toBe('split pong');
     expect(await query(new SubPing())).toBe('sub pong');
   });
@@ -243,7 +243,7 @@ describe('4.3 zeg(): files and pairs', () => {
       './fixtures/ts/sub/Echo.ts',
       './fixtures/ts/sub/EchoHandler.ts',
     ]);
-    expect(zeg({ queries: output })).toBeUndefined();
+    expect(Zeg({ queries: output })).toBeUndefined();
     expect(await query(new TsPing('a'))).toBe('pong a');
     expect(await query(new TsEcho('b'))).toBe('b');
   });
@@ -258,7 +258,7 @@ describe('4.3 zeg(): files and pairs', () => {
     });
     expect(noMessage.message).toContain('./B.ts');
     // A .js pair and a .ts pair with the same key in one folder are valid.
-    zeg({ commands: { ...cmd, './A.ts': { default: B }, './AHandler.ts': { default: BH } } });
+    Zeg({ commands: { ...cmd, './A.ts': { default: B }, './AHandler.ts': { default: BH } } });
     const a = new A(1);
     const b = new B(2);
     await command(a);

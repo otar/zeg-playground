@@ -1,6 +1,6 @@
 // docs/spec.md section 4.11: REQ-110 to REQ-113.
 import { describe, expect, it } from 'vitest';
-import { zeg, command, ZegError } from '@otar/zeg';
+import { Zeg, command, ZegError } from '@otar/zeg';
 import { Q, cmd } from './spec-fixtures.js';
 import { checkSeen, expectRejects } from './helpers.js';
 
@@ -20,8 +20,8 @@ describe('4.11 ZegError', () => {
     expect(new ZegError(42).message).toBe('');
   });
 
-  it('REQ-112 zeg adds no other properties', async () => {
-    zeg({ commands: cmd });
+  it('REQ-112 Zeg adds no other properties', async () => {
+    Zeg({ commands: cmd });
     const fromDispatch = await expectRejects('HANDLER_NOT_FOUND', command(new Q(1)));
     for (const error of [new ZegError('HANDLER_NOT_FOUND', 'text'), fromDispatch]) {
       for (const key of Reflect.ownKeys(error)) {
@@ -31,8 +31,8 @@ describe('4.11 ZegError', () => {
     }
   });
 
-  it('REQ-113 each ZegError from zeg has a known code', () => {
-    // The helpers check each ZegError that zeg creates in a test file. Each other test file that creates a ZegError
+  it('REQ-113 each ZegError from Zeg has a known code', () => {
+    // The helpers check each ZegError that Zeg creates in a test file. Each other test file that creates a ZegError
     // ends with the same test, or checks the list `seen` itself.
     checkSeen(['HANDLER_NOT_FOUND']);
   });

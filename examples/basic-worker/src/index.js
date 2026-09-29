@@ -1,9 +1,9 @@
 // src/index.js
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
-zeg({
+Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
 });

@@ -1,7 +1,7 @@
-// docs/spec.md REQ-060. Its first state needs a module state in which no call to zeg() occurred (section 1.5, rule 5).
-// The tests run in the order of the requirement: first the state without zeg(), then the state after zeg().
+// docs/spec.md REQ-060. Its first state needs a module state in which no call to Zeg() occurred (section 1.5, rule 5).
+// The tests run in the order of the requirement: first the state without Zeg(), then the state after Zeg().
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query, ZegError } from '@otar/zeg';
+import { Zeg, command, query, ZegError } from '@otar/zeg';
 import { A, Q, cmd, qry, resetCalls } from './spec-fixtures.js';
 import { checkSeen, invalidMessages, seen, settleAndCheck } from './helpers.js';
 
@@ -48,15 +48,15 @@ async function expectNativePromises() {
 }
 
 describe('REQ-060 command() and query() always return a Promise', () => {
-  it('REQ-060 (state 1) no call to zeg() occurred', async () => {
+  it('REQ-060 (state 1) no call to Zeg() occurred', async () => {
     const outcomes = await expectNativePromises();
     // The 4 valid messages: NOT_CONFIGURED. The 12 invalid values: TypeError.
     expect(outcomes.slice(0, 4)).toEqual(Array(4).fill(['NOT_CONFIGURED', 'NOT_CONFIGURED']));
     expect(outcomes.slice(4)).toEqual(Array(12).fill(['TypeError', 'TypeError']));
   });
 
-  it('REQ-060 (state 2) after zeg({ commands: cmd, queries: qry })', async () => {
-    expect(zeg({ commands: cmd, queries: qry })).toBeUndefined();
+  it('REQ-060 (state 2) after Zeg({ commands: cmd, queries: qry })', async () => {
+    expect(Zeg({ commands: cmd, queries: qry })).toBeUndefined();
     const outcomes = await expectNativePromises();
     expect(outcomes.slice(0, 4)).toEqual([
       ['ok', 'HANDLER_NOT_FOUND'], // new A(1)

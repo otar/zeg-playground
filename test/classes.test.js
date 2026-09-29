@@ -1,6 +1,6 @@
 // docs/spec.md section 4.4: REQ-040 to REQ-045.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command } from '@otar/zeg';
+import { Zeg, command } from '@otar/zeg';
 import { A, AH, B, cmd, calls, resetCalls } from './spec-fixtures.js';
 import { checkSeen, expectHandled, expectThrows, pairOf } from './helpers.js';
 
@@ -8,9 +8,9 @@ beforeEach(() => {
   resetCalls();
 });
 
-describe('4.4 zeg(): classes', () => {
-  it('REQ-040 zeg() reads only the default export', async () => {
-    zeg({
+describe('4.4 Zeg(): classes', () => {
+  it('REQ-040 Zeg() reads only the default export', async () => {
+    Zeg({
       commands: {
         './A.js': { default: A, other: 1 },
         './AHandler.js': { default: AH, X: class {} },
@@ -27,7 +27,7 @@ describe('4.4 zeg(): classes', () => {
     });
   });
 
-  it('REQ-040 (Z4) zeg() reads module.default one time', () => {
+  it('REQ-040 (Z4) Zeg() reads module.default one time', () => {
     let reads = 0;
     const module = {
       get default() {
@@ -36,7 +36,7 @@ describe('4.4 zeg(): classes', () => {
       },
     };
     expect(
-      zeg({ commands: { './A.js': module, './AHandler.js': { default: AH } } }),
+      Zeg({ commands: { './A.js': module, './AHandler.js': { default: AH } } }),
     ).toBeUndefined();
     expect(reads).toBe(1);
   });
@@ -51,7 +51,7 @@ describe('4.4 zeg(): classes', () => {
     function F() {}
     for (const value of [class {}, F]) {
       expect(
-        zeg({ commands: { './A.js': { default: value }, './AHandler.js': { default: AH } } }),
+        Zeg({ commands: { './A.js': { default: value }, './AHandler.js': { default: AH } } }),
       ).toBeUndefined();
     }
   });
@@ -71,7 +71,7 @@ describe('4.4 zeg(): classes', () => {
     ];
     for (const H of valid) {
       expect(
-        zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: H } } }),
+        Zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: H } } }),
       ).toBeUndefined();
     }
     const invalid = [
@@ -118,7 +118,7 @@ describe('4.4 zeg(): classes', () => {
   });
 
   it('REQ-044 two handler files can have the same handler class', async () => {
-    zeg({ commands: { ...cmd, './B.js': { default: B }, './BHandler.js': { default: AH } } });
+    Zeg({ commands: { ...cmd, './B.js': { default: B }, './BHandler.js': { default: AH } } });
     const a = new A(1);
     const b = new B(2);
     await command(a);
@@ -138,7 +138,7 @@ describe('4.4 zeg(): classes', () => {
       })();
     expect(M.name).toBe('');
     expect(H.name).toBe('');
-    expect(zeg({ commands: pairOf(M, H, 'M') })).toBeUndefined();
+    expect(Zeg({ commands: pairOf(M, H, 'M') })).toBeUndefined();
     const m = new M();
     await command(m);
     expectHandled('H', m);

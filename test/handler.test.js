@@ -1,6 +1,6 @@
 // docs/spec.md section 4.8: REQ-080 to REQ-089.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, B, BH, Q, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
 import { expectHandled, expectTypeError, pairOf, settle } from './helpers.js';
 
@@ -16,7 +16,7 @@ describe('4.8 dispatch: the handler', () => {
         instances.push(this);
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     await command(new A(1));
     await command(new A(2));
     expect(instances).toHaveLength(2);
@@ -33,7 +33,7 @@ describe('4.8 dispatch: the handler', () => {
       }
       handle() {}
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     await command(new A(1));
     expect(lengths).toEqual([0]);
   });
@@ -49,34 +49,34 @@ describe('4.8 dispatch: the handler', () => {
         stored.push([arguments.length, arguments[0], this]);
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const message = new A(1);
     await command(message);
     expect(stored).toHaveLength(1);
     expect(stored[0][0]).toBe(1);
     expect(stored[0][1]).toBe(message);
-    // `this` is the handler instance that zeg created for this dispatch
+    // `this` is the handler instance that Zeg created for this dispatch
     expect(instances).toHaveLength(1);
     expect(stored[0][2]).toBe(instances[0]);
     expect(stored[0][2]).toBeInstanceOf(H);
   });
 
   it('REQ-083 handle() starts during the call', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     const m = new A(1);
     const p = command(m);
     expectHandled('A', m);
     await p;
   });
 
-  it('REQ-084 zeg does not change the message', async () => {
+  it('REQ-084 Zeg does not change the message', async () => {
     class H {
       handle(m) {
         m.v = 2;
         m.list.push(1);
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const message = new A(1);
     message.list = [];
     await command(message);
@@ -98,7 +98,7 @@ describe('4.8 dispatch: the handler', () => {
         m.v = 2;
       }
     }
-    zeg({ commands: pairOf(F, FH, 'F') });
+    Zeg({ commands: pairOf(F, FH, 'F') });
     const message = new F(1);
     await expectTypeError(command(message));
     expect(message.v).toBe(1);
@@ -113,7 +113,7 @@ describe('4.8 dispatch: the handler', () => {
         calls.push(await query(new Q(1)));
       }
     }
-    zeg({
+    Zeg({
       commands: {
         './A.js': { default: A },
         './AHandler.js': { default: AD },
@@ -128,7 +128,7 @@ describe('4.8 dispatch: the handler', () => {
     expect(calls).toContainEqual({ tag: 'Q', v: 1 });
   });
 
-  it('REQ-087 zeg has no limit for nested dispatches', async () => {
+  it('REQ-087 Zeg has no limit for nested dispatches', async () => {
     class R {
       constructor(n) {
         this.n = n;
@@ -143,7 +143,7 @@ describe('4.8 dispatch: the handler', () => {
         }
       }
     }
-    zeg({ commands: pairOf(R, RH, 'R') });
+    Zeg({ commands: pairOf(R, RH, 'R') });
     const r = await settle(command(new R(100)));
     expect(r).toEqual({ ok: true, value: undefined });
     expect(runs).toBe(101);
@@ -162,12 +162,12 @@ describe('4.8 dispatch: the handler', () => {
         return { v: 1 };
       }
     }
-    zeg({ queries: { ...pairOf(S1, SyncHandler, 'S1'), ...pairOf(S2, AsyncHandler, 'S2') } });
+    Zeg({ queries: { ...pairOf(S1, SyncHandler, 'S1'), ...pairOf(S2, AsyncHandler, 'S2') } });
     expect(await query(new S1())).toEqual({ v: 1 });
     expect(await query(new S2())).toEqual({ v: 1 });
   });
 
-  it('REQ-089 zeg calls the handle() of the instance: an own function has priority', async () => {
+  it('REQ-089 Zeg calls the handle() of the instance: an own function has priority', async () => {
     const ran = [];
     class H {
       constructor() {
@@ -179,7 +179,7 @@ describe('4.8 dispatch: the handler', () => {
         ran.push(['prototype', m]);
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const m = new A(1);
     await command(m);
     expect(ran).toHaveLength(1);
@@ -194,17 +194,17 @@ describe('4.8 dispatch: the handler', () => {
       }
       handle() {}
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     await expectTypeError(command(new A(1)));
   });
 
-  it('REQ-089 a generator function as handler class: zeg() returns, and the Promise rejects with the TypeError from new', async () => {
+  it('REQ-089 a generator function as handler class: Zeg() returns, and the Promise rejects with the TypeError from new', async () => {
     let handleRan = 0;
     function* G() {}
     G.prototype.handle = function () {
       handleRan++;
     };
-    expect(zeg({ commands: pairOf(A, G) })).toBeUndefined();
+    expect(Zeg({ commands: pairOf(A, G) })).toBeUndefined();
     const error = await expectTypeError(command(new A(1)));
     expect(error.message).toMatch(/not a constructor/);
     expect(handleRan).toBe(0);

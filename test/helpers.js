@@ -1,18 +1,18 @@
 // Helpers of the unit tests. The words "throws X", "rejects with X" and "handles" are defined in docs/spec.md section 1.4.
 import { expect } from 'vitest';
-import { ZegError, zeg } from '@otar/zeg';
+import { ZegError, Zeg } from '@otar/zeg';
 import { A, calls } from './spec-fixtures.js';
 
 export const CODES = ['INVALID_CONFIG', 'NOT_CONFIGURED', 'HANDLER_NOT_FOUND', 'UNDEFINED_RESULT'];
 
-// Each ZegError that zeg creates in the tests of one test file (REQ-113). Each test file has its own module state,
+// Each ZegError that Zeg creates in the tests of one test file (REQ-113). Each test file has its own module state,
 // and as a result its own copy of this list.
 export const seen = [];
 
-// The start of each error text of zeg: the name of the function, then a description (REQ-061, REQ-113).
-export const TEXT_START = /^(zeg|command|query)\(\): \S/;
+// The start of each error text of Zeg: the name of the function, then a description (REQ-061, REQ-113).
+export const TEXT_START = /^(Zeg|command|query)\(\): \S/;
 
-// REQ-113: a ZegError from zeg has a known code, and its error text starts with TEXT_START.
+// REQ-113: a ZegError from Zeg has a known code, and its error text starts with TEXT_START.
 export function checkKnown(error) {
   expect(error).toBeInstanceOf(ZegError);
   expect(CODES).toContain(error.code);
@@ -28,15 +28,15 @@ export function checkSeen(codes) {
   expect([...new Set(seen.map((error) => error.code))].sort()).toEqual([...codes].sort());
 }
 
-// Calls zeg(...args) and returns the value that it throws. Fails if zeg() returns.
+// Calls Zeg(...args) and returns the value that it throws. Fails if Zeg() returns.
 export function thrownBy(...args) {
   let result;
   try {
-    result = zeg(...args);
+    result = Zeg(...args);
   } catch (error) {
     return error;
   }
-  throw new Error(`zeg() returned ${String(result)} and did not throw`);
+  throw new Error(`Zeg() returned ${String(result)} and did not throw`);
 }
 
 // "Throws X": the call throws a ZegError whose code is X.

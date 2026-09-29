@@ -1,6 +1,6 @@
-# zeg: decisions
+# Zeg: decisions
 
-This file lists the decisions for zeg, a small CQRS library for Cloudflare Workers. Each decision has an ID. `docs/syntax.md` and the later documents refer to these IDs.
+This file lists the decisions for Zeg, a small CQRS library for Cloudflare Workers. Each decision has an ID. `docs/syntax.md` and the later documents refer to these IDs.
 
 The user made these decisions in the clarification rounds and in the reviews of phase 1. Some decisions add an exact detail to an answer from the user. These decisions have the mark **(detail)**. When the user approves phase 1, the user also approves these details.
 
@@ -24,26 +24,26 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Scope
 
-- **D-01** Version 1 contains only `zeg()`, `command()`, `query()` and `ZegError`. It has no middleware, no events and no Cloudflare Queues support.
-- **D-02** The package exports exactly four names: `zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type name `GlobOutput` (D-76). TypeScript can import this type name, for example `import('@otar/zeg').GlobOutput`. It is not a value, so the module has no fifth export at runtime.
+- **D-01** Version 1 contains only `Zeg()`, `command()`, `query()` and `ZegError`. It has no middleware, no events and no Cloudflare Queues support.
+- **D-02** The package exports exactly four names: `Zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type name `GlobOutput` (D-76). TypeScript can import this type name, for example `import('@otar/zeg').GlobOutput`. It is not a value, so the module has no fifth export at runtime.
 - **D-03** The library code imports no modules. It uses only standard JavaScript. **(detail)** As a result, it imports no `node:*` module and no `cloudflare:*` module.
 
 ## API model
 
-- **D-04** The API has global functions. The project calls the setup function `zeg()` one time, in its Worker entry file, for example `src/index.js`. Each other file that dispatches a message imports `command` or `query` from `'@otar/zeg'`.
+- **D-04** The API has global functions. The project calls the setup function `Zeg()` one time, in its Worker entry file, for example `src/index.js`. Each other file that dispatches a message imports `command` or `query` from `'@otar/zeg'`.
 - **D-05** The library keeps the handlers in a hidden module-level registry. As a result, each isolate has one registry. The package has no bus object and no `reset()` function.
 
 ## Build and discovery
 
-- **D-06** A project that uses zeg must build with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
-- **D-07** The project finds its message files and handler files with the eager form of `import.meta.glob`, that is `{ eager: true }`. The project gives the glob outputs of each kind to `zeg()`. The globs of each kind must find the message files and the handler files of that kind. **(detail)** In `docs/syntax.md` section 3.9, one glob finds the message files, and a second glob finds the handler files. **(detail)** Vite requires that each glob pattern is a string literal in the source file.
+- **D-06** A project that uses Zeg must build with Vite and `@cloudflare/vite-plugin`. Zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
+- **D-07** The project finds its message files and handler files with the eager form of `import.meta.glob`, that is `{ eager: true }`. The project gives the glob outputs of each kind to `Zeg()`. The globs of each kind must find the message files and the handler files of that kind. **(detail)** In `docs/syntax.md` section 3.9, one glob finds the message files, and a second glob finds the handler files. **(detail)** Vite requires that each glob pattern is a string literal in the source file.
 - **D-08** The library does not use class names. Message classes and handler classes can be anonymous or named. A project does not need the `keepNames` setting.
 
 ## Files and pairs
 
 - **D-09** The `commands` option supplies the command files, and the `queries` option supplies the query files. Each option is a glob output or an array of glob outputs. One glob can have several patterns, so one glob can find files in several folders. **(detail)** An empty array is valid. **(detail)** A glob output with no files is not valid, because it shows a glob pattern with no match, and such a pattern is usually a mistake. If a kind has no files yet, the project leaves out its option or its array entry.
 - **D-10** Each file in a glob output must be part of a pair.
-- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. The same applies to `X.ts` and `XHandler.ts` (D-78). Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for zeg.
+- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. The same applies to `X.ts` and `XHandler.ts` (D-78). Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for Zeg.
 - **D-12** Files with the same name in different folders form different pairs. For example, `./commands/billing/Charge.js` and `./commands/shop/Charge.js` are valid together.
 - **D-13** Each message file and each handler file has a default export. **(detail)** The library reads only the default export. It ignores other exports.
 - **D-14** Revision 7 removed this decision. It described a negative glob pattern for files that are not part of a pair.
@@ -57,14 +57,14 @@ To change a decision, change this file first. Then update the documents that ref
 ## Handlers
 
 - **D-18** A handler class has an instance method `handle(message)`. The method gets exactly one argument. **(detail)** It can be sync or async.
-- **D-19** `zeg()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
-- **D-20** **(detail)** `zeg()` checks each message class. The class must be a function whose `prototype` is an object.
+- **D-19** `Zeg()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
+- **D-20** **(detail)** `Zeg()` checks each message class. The class must be a function whose `prototype` is an object.
 - **D-21** The library creates a new handler instance for each dispatch, with `new HandlerClass()` and no arguments.
 - **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message.
 - **D-23** A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'`.
 - **D-24** The library has no guard against recursive dispatch.
 - **D-25** **(detail)** A message file or a handler file must not import the Worker entry file. Such an import cycle can cause `undefined` values and no error.
-- **D-26** If the top-level code of a message file or a handler file throws, the Worker fails at startup. zeg does not catch this error.
+- **D-26** If the top-level code of a message file or a handler file throws, the Worker fails at startup. Zeg does not catch this error.
 
 ## Messages
 
@@ -76,11 +76,11 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-29** The library gives the message to the handler as it is. It does not freeze, copy or change the message. If a message must not change, its message class can freeze the message in the constructor, for example with `Object.freeze(this)`.
 - **D-30 to D-34** Revision 3 removed these decisions. They described the deep freeze.
 
-## zeg()
+## Zeg()
 
-- **D-35** Each call to `zeg()` replaces all handlers. The options `commands` and `queries` are both optional. **(detail)** An option with the value `undefined` is the same as a missing option.
-- **D-36** `zeg({})` is valid. It creates an empty registry.
-- **D-37** `zeg()` throws a `ZegError` with the code `INVALID_CONFIG` in these cases:
+- **D-35** Each call to `Zeg()` replaces all handlers. The options `commands` and `queries` are both optional. **(detail)** An option with the value `undefined` is the same as a missing option.
+- **D-36** `Zeg({})` is valid. It creates an empty registry.
+- **D-37** `Zeg()` throws a `ZegError` with the code `INVALID_CONFIG` in these cases:
   - **(detail)** The argument is not a plain object.
   - The argument has a property other than `commands` and `queries`.
   - **(detail)** The value of `commands` or `queries` is not a plain object and not an array. An entry of such an array is not a plain object.
@@ -91,9 +91,9 @@ To change a decision, change this file first. Then update the documents that ref
   - A message file has no handler file in its folder in the same glob output.
   - A handler file has no message file in its folder in the same glob output. **(detail)** This case includes a handler file with the name `Handler.js` or `Handler.ts` only. It also includes `XHandler.ts` with only `X.js` in its folder, and `XHandler.js` with only `X.ts`.
   - A message class does not pass the check in D-20, or a handler class does not pass the check in D-19.
-  - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
-- **D-38** `zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
-- **D-39** `zeg()` checks all options before it changes the registry. If `zeg()` throws, the registry does not change, and the handlers from the previous call stay active.
+  - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `Zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
+- **D-38** `Zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
+- **D-39** `Zeg()` checks all options before it changes the registry. If `Zeg()` throws, the registry does not change, and the handlers from the previous call stay active.
 - **D-40** **(detail)** Two handler files can have the same handler class as their default export.
 
 ## Dispatch
@@ -103,7 +103,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-43** `query()` resolves to the value that the handler returns, after `await`. `null` is a valid value.
 - **D-44** If the value from a query handler is `undefined` after `await`, the Promise rejects with the code `UNDEFINED_RESULT`.
 - **D-45** If the message is not valid (D-27), the Promise rejects with a `TypeError`.
-- **D-46** Until a call to `zeg()` returns without an error, the Promise rejects with the code `NOT_CONFIGURED`.
+- **D-46** Until a call to `Zeg()` returns without an error, the Promise rejects with the code `NOT_CONFIGURED`.
 - **D-47** If the class of the message is not a message class of the correct kind, the Promise rejects with the code `HANDLER_NOT_FOUND`. This includes a class that no glob found and a message of the other kind.
 - **D-48** If the message is a message of the other kind, the error text tells the caller to use the other function. **(detail)** The error text names the message file by its key. If the option is an array, the error text also names the position of the glob output in the array, for example `commands[1]`.
 - **D-49** If `new HandlerClass()` or `handle()` throws, or if the Promise of `handle()` rejects, the Promise of the dispatch rejects with the same error object. The library does not wrap or change this error.
@@ -112,13 +112,13 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-50** The library uses one error class, `ZegError`. **(detail)** It extends `Error`.
 - **D-51** The constructor is public: `new ZegError(code, message)`. It sets `code` and `message`. It does not check the code. The `name` property is always `'ZegError'`.
-- **D-52** A `ZegError` has the properties `name`, `code` and `message`. zeg adds no other properties. **(detail)** The `stack` property that the JavaScript engine adds is not part of this rule.
+- **D-52** A `ZegError` has the properties `name`, `code` and `message`. Zeg adds no other properties. **(detail)** The `stack` property that the JavaScript engine adds is not part of this rule.
 - **D-53** The codes are `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and `UNDEFINED_RESULT`.
 - **D-54** The class and the code are the API. The error text can change in any version.
 
 ## Package
 
-- **D-55** The name of the library is zeg. The npm package is `@otar/zeg`.
+- **D-55** The name of the library is Zeg. The npm package is `@otar/zeg`.
 - **D-56** `package.json` has `"name": "@otar/zeg"`, a `"version"` that is a valid semantic version number (for example `"0.1.0"`, D-79), `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`. It has no `"private"` field, so the package is ready to publish. It has no runtime dependencies and no `peerDependencies`.
 - **D-57** The package has no build step. It contains the source file `src/zeg.js` and the type declaration file `src/zeg.d.ts`. **(detail)** `npm run types` generates `src/zeg.d.ts` from the docblocks of `src/zeg.js` (D-76) with TypeScript 7, and the repository contains the result. A static check makes sure that the committed file is the same as a new output. TypeScript finds the file next to `src/zeg.js` through the `exports` field, so `package.json` has no `types` field (background fact 24).
 - **D-58** The license is MIT, with `Copyright (c) 2026 Otar Chekurishvili`.
@@ -166,7 +166,11 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Versioning (revision 8)
 
-- **D-79** zeg follows semantic versioning. The API is the four exports, the option names, the rules for files and pairs, the class `ZegError` and its codes. The error texts are not part of the API (D-54). Before version 1.0.0, a new minor version can change the API. `CHANGELOG.md` lists the changes of each version, and the package contains this file. **(detail)** The version stays `0.1.0` until the first release on npm. Its section in `CHANGELOG.md` has the mark "unreleased".
+- **D-79** Zeg follows semantic versioning. The API is the four exports, the option names, the rules for files and pairs, the class `ZegError` and its codes. The error texts are not part of the API (D-54). Before version 1.0.0, a new minor version can change the API. `CHANGELOG.md` lists the changes of each version, and the package contains this file. **(detail)** The version stays `0.1.0` until the first release on npm. Its section in `CHANGELOG.md` has the mark "unreleased".
+
+## Names (revision 9)
+
+- **D-80** The setup function is `Zeg()`, with a capital Z. It is a function, and a project calls it without `new`. The error texts of `Zeg()` start with `Zeg(): `. The documents write the name of the library as "Zeg". **(detail)** The npm package `@otar/zeg`, the file `src/zeg.js` and the class `ZegError` keep their names.
 
 ## Background facts
 
@@ -179,13 +183,13 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 5. Class names are not reliable. For `export default class {}`, the name is `__vite_ssr_export_default__` in `vite dev` and Vitest, and `RegisterUser_default` in a Vite build.
 6. In a minified build, class names have one letter, and a message class and its handler class can get the same letter. In Node without a bundler, the name is `default`.
 7. With eager globs, the Vite build has one chunk and no warnings. All message files and handler files run when the isolate starts.
-8. If `zeg()` throws at startup, `vite dev` does not start, and workerd does not start the Worker.
+8. If `Zeg()` throws at startup, `vite dev` does not start, and workerd does not start the Worker.
 9. A handler that imports `command` from the library causes no error at startup.
 10. `import { env, waitUntil } from 'cloudflare:workers'` works with the compatibility date `2026-09-01` and no flags.
 11. Workers use one isolate for many requests, also for concurrent requests. Module-level state stays from one request to the next.
 12. Vitest with `@cloudflare/vitest-plugin` gives each test file a new module state. The tests in one file share the module state.
 13. `@cloudflare/vitest-plugin` adds an import of the Worker entry file to the module `cloudflare:test`. As a result, the entry file runs when a test file or a setup file imports `cloudflare:test`. If no file imports `cloudflare:test`, the entry file runs at the first `exports.default.fetch()` in a test file.
-14. `vi.resetModules()` in Vitest creates new class objects and a new instance of zeg. After a reset, a class from an earlier import is not equal to the class from a new import.
+14. `vi.resetModules()` in Vitest creates new class objects and a new instance of Zeg. After a reset, a class from an earlier import is not equal to the class from a new import.
 15. Revision 3 removed this fact. It described `Object.freeze` errors for typed arrays and module namespace objects.
 16. One `import.meta.glob` call accepts an array of patterns, including negative patterns. As a result, one glob can find files in several folders.
 17. Without the option `base` (background fact 22), each glob supplies file paths relative to the file that contains it. As a result, two globs in different files can supply the same file path. If a project merges them with `{ ...a, ...b }`, the merge loses entries, and no error occurs. In the lab, 6 files became 4 entries.
@@ -194,12 +198,12 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 20. StandardJS, Airbnb and Google set the ESLint rule `curly` to `multi-line`. This setting allows `if (x) doSomething();`. Of the widely used style guides, only XO requires braces, but XO uses tabs and adds many other rules. Prettier does not add or remove braces. `eslint --fix` with `curly: 'all'` adds the braces safely. Biome marks the fix of its rule `useBlockStatements` as unsafe, and in a test this fix wrote a file that did not parse.
 21. Stryker 10.0.0 with `@stryker-mutator/vitest-runner` runs the unit tests in workerd, because `@cloudflare/vitest-plugin` sets its own test pool. This runner always selects the tests for each mutant by coverage, and the setting `coverageAnalysis` has no effect on it. The command runner of Stryker does not work with workerd, because the active mutant does not reach workerd. With it, all mutants survive. On 2026-09-29, Stryker made 215 mutants of `src/zeg.js`, and the tests killed all 215 (a mutation score of 100%). The run needed 2 minutes.
 22. Vite 8.3.1 supports the option `base` of `import.meta.glob`. With `base`, each file path of the glob output is relative to the base folder, for example `./RegisterUser.js` and `./billing/ChargeCard.js`. The base folder must start with `/`, `./` or `../`. A base folder that starts with `./` or `../` is relative to the file that contains the glob. A base folder that starts with `/` is relative to the project root. Vite 8.3.1 has two implementations of the glob transform: one for `vite dev` and Vitest, and one in Rolldown for a build. The lab got the same file paths in `vite dev`, in a Vite build and in Vitest with workerd. On 2026-09-28, the lab tested the example Worker with the folders and the globs of `docs/syntax.md` section 3.9 (revision 7). The Worker worked in `vite dev` and in `vite preview` after a build. The library did not change.
-23. TypeScript 7.0.2 is a native build of TypeScript. The lab compared it with TypeScript 6.0.3 in projects that import a copy of zeg with docblocks. At that time, the package had no `.d.ts` file (see background fact 24).
+23. TypeScript 7.0.2 is a native build of TypeScript. The lab compared it with TypeScript 6.0.3 in projects that import a copy of Zeg with docblocks. At that time, the package had no `.d.ts` file (see background fact 24).
     - A TypeScript 7 editor shows the docblocks of the package only if the project has a `jsconfig.json` or a `tsconfig.json`, also an empty one. A TypeScript 6 editor shows them without such a file.
     - A strict TypeScript project got the error `TS7016 Could not find a declaration file for module '@otar/zeg'`, because the package had no `.d.ts` file at that time.
-    - In a project with `checkJs`, TypeScript 7 reports `command('RegisterUser')` (TS2345) and an unknown option of `zeg()` (TS2353). TypeScript 6 reports TS2345 only with `noImplicitAny` on. No version finds a lazy glob. `zeg()` finds it at runtime.
+    - In a project with `checkJs`, TypeScript 7 reports `command('RegisterUser')` (TS2345) and an unknown option of `Zeg()` (TS2353). TypeScript 6 reports TS2345 only with `noImplicitAny` on. No version finds a lazy glob. `Zeg()` finds it at runtime.
     - esbuild 0.28 removes the docblocks in a minified build, so the size of the build does not change.
-24. On 2026-09-29, the lab tested the package with `src/zeg.d.ts`. zeg came from `npm pack`, not from a link.
+24. On 2026-09-29, the lab tested the package with `src/zeg.d.ts`. Zeg came from `npm pack`, not from a link.
     - TypeScript 7.0.2 generates `src/zeg.d.ts` from `src/zeg.js` with `--declaration` and `--emitDeclarationOnly`. The output keeps the docblocks, the type `GlobOutput`, `message: object` and `query<T = unknown>`. The command needs `--rootDir src`.
     - With the `moduleResolution` values `bundler`, `node16` and `nodenext`, TypeScript finds `src/zeg.d.ts` through `"exports": "./src/zeg.js"`.
     - A TypeScript 7 editor shows the docblocks also in a JavaScript project without a `jsconfig.json` or a `tsconfig.json`.
@@ -241,3 +245,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The README has a "Why zeg" section and a sentence about new IDs. `docs/syntax.md` section 6.4 shows one error boundary: the project's own errors map to 4xx, and each other error, also each `ZegError`, gives 500.
   - zeg follows semantic versioning, and `CHANGELOG.md` lists the changes. Revision 8 added D-79 and changed D-56. The spec added REQ-007 and changed REQ-003.
   - Background fact 21 has the numbers of the mutation run of revision 8.
+- **Revision 9** (after revision 8): the user asked for middleware and for the name `Zeg()`.
+  - The setup function `zeg()` became `Zeg()`, and its error texts start with `Zeg(): `. The documents write the name of the library as "Zeg". Revision 9 added D-80. The spec changed each `zeg()` to `Zeg()`, and it changed spec detail 20 and section 6. The History entries of earlier revisions keep the old name.

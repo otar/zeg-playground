@@ -1,6 +1,6 @@
 // docs/spec.md section 4.2: REQ-010 to REQ-019.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, B, BH, Q, cmd, qry, resetCalls } from './spec-fixtures.js';
 import { checkSeen, expectHandled, expectRejects, expectThrows, pairOf } from './helpers.js';
 
@@ -8,9 +8,9 @@ beforeEach(() => {
   resetCalls();
 });
 
-describe('4.2 zeg(): argument and options', () => {
-  it('REQ-010 zeg() returns undefined', () => {
-    expect(zeg({ commands: cmd })).toBeUndefined();
+describe('4.2 Zeg(): argument and options', () => {
+  it('REQ-010 Zeg() returns undefined', () => {
+    expect(Zeg({ commands: cmd })).toBeUndefined();
   });
 
   it('REQ-011 the argument must be a plain object', () => {
@@ -18,7 +18,7 @@ describe('4.2 zeg(): argument and options', () => {
       expectThrows('INVALID_CONFIG', value);
     }
     expectThrows('INVALID_CONFIG'); // no argument
-    expect(zeg(Object.create(null))).toBeUndefined();
+    expect(Zeg(Object.create(null))).toBeUndefined();
   });
 
   it('REQ-012 the argument cannot have other properties', () => {
@@ -41,7 +41,7 @@ describe('4.2 zeg(): argument and options', () => {
 
   it('REQ-012 (Z2, Z3) an own property commands that is not enumerable is a valid option', async () => {
     expect(
-      zeg(Object.defineProperty({}, 'commands', { value: cmd, enumerable: false })),
+      Zeg(Object.defineProperty({}, 'commands', { value: cmd, enumerable: false })),
     ).toBeUndefined();
     const m = new A(1);
     await command(m);
@@ -49,14 +49,14 @@ describe('4.2 zeg(): argument and options', () => {
   });
 
   it('REQ-013 an option with the value undefined is the same as a missing option', async () => {
-    expect(zeg({ commands: undefined, queries: qry })).toBeUndefined();
+    expect(Zeg({ commands: undefined, queries: qry })).toBeUndefined();
     expect(await query(new Q(1))).toEqual({ tag: 'Q', v: 1 });
   });
 
-  it('REQ-013 (Z3) zeg() reads only own properties of the options', () => {
+  it('REQ-013 (Z3) Zeg() reads only own properties of the options', () => {
     Object.prototype.queries = 'x';
     try {
-      expect(zeg({ commands: cmd })).toBeUndefined();
+      expect(Zeg({ commands: cmd })).toBeUndefined();
     } finally {
       delete Object.prototype.queries;
     }
@@ -68,7 +68,7 @@ describe('4.2 zeg(): argument and options', () => {
     }
     for (const value of [cmd, [cmd]]) {
       resetCalls();
-      expect(zeg({ commands: value })).toBeUndefined();
+      expect(Zeg({ commands: value })).toBeUndefined();
       const m = new A(1);
       await command(m);
       expectHandled('A', m);
@@ -76,7 +76,7 @@ describe('4.2 zeg(): argument and options', () => {
   });
 
   it('REQ-015 an array can be empty, and each entry must be a plain object', () => {
-    expect(zeg({ commands: [] })).toBeUndefined();
+    expect(Zeg({ commands: [] })).toBeUndefined();
     // eslint-disable-next-line no-sparse-arrays
     const holey = [, cmd];
     expect(0 in holey).toBe(false);
@@ -142,10 +142,10 @@ describe('4.2 zeg(): argument and options', () => {
     }
   });
 
-  it('REQ-018 zeg() ignores properties of a glob output that are not enumerable strings', async () => {
+  it('REQ-018 Zeg() ignores properties of a glob output that are not enumerable strings', async () => {
     const output = { ...cmd, [Symbol('B')]: { default: B } };
     Object.defineProperty(output, './B.js', { value: { default: B }, enumerable: false });
-    expect(zeg({ commands: output })).toBeUndefined();
+    expect(Zeg({ commands: output })).toBeUndefined();
     const m = new A(1);
     await command(m);
     expectHandled('A', m);

@@ -1,6 +1,6 @@
 // docs/spec.md section 4.6: REQ-061, REQ-063 and REQ-064. REQ-060 and REQ-062 are in req-060.test.js and req-062.test.js.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
 import {
   checkSeen,
@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe('4.6 dispatch: the message', () => {
   it('REQ-061 the Promise rejects with a TypeError for an invalid message', async () => {
-    zeg({ commands: cmd, queries: qry });
+    Zeg({ commands: cmd, queries: qry });
     for (const value of invalidMessages()) {
       expect((await expectTypeError(command(value))).message).toMatch(/^command\(\): \S/);
       expect((await expectTypeError(query(value))).message).toMatch(/^query\(\): \S/);
@@ -27,15 +27,15 @@ describe('4.6 dispatch: the message', () => {
   });
 
   it('REQ-063 other objects are valid messages', async () => {
-    zeg({ commands: cmd, queries: qry });
+    Zeg({ commands: cmd, queries: qry });
     for (const message of [new Map(), new Date()]) {
       await expectRejects('HANDLER_NOT_FOUND', command(message));
       await expectRejects('HANDLER_NOT_FOUND', query(message));
     }
   });
 
-  it('REQ-064 zeg reads no property of the message: an own getter constructor that throws', async () => {
-    zeg({ commands: cmd });
+  it('REQ-064 Zeg reads no property of the message: an own getter constructor that throws', async () => {
+    Zeg({ commands: cmd });
     const m = new A(1);
     Object.defineProperty(m, 'constructor', {
       get() {
@@ -47,7 +47,7 @@ describe('4.6 dispatch: the message', () => {
   });
 
   it('REQ-064 a Proxy message: getPrototypeOf runs one time, and a read of constructor throws', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     let count = 0;
     const proxy = new Proxy(new A(1), {
       getPrototypeOf(target) {
@@ -71,7 +71,7 @@ describe('4.6 dispatch: the message', () => {
     expect(first === proxy).toBe(true);
   });
 
-  it('REQ-064 (section 3) zeg uses no trap of the message other than one getPrototypeOf', async () => {
+  it('REQ-064 (section 3) Zeg uses no trap of the message other than one getPrototypeOf', async () => {
     const traps = [];
     const all = {};
     const names = [
@@ -101,7 +101,7 @@ describe('4.6 dispatch: the message', () => {
         calls.push(['H', m]);
       }
     };
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const proxy = new Proxy(new A(1), all);
     await command(proxy);
     expect(traps).toEqual(['getPrototypeOf']);
@@ -109,7 +109,7 @@ describe('4.6 dispatch: the message', () => {
   });
 
   it('REQ-064 a Proxy whose getPrototypeOf trap throws e: the Promise rejects with e', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     for (const e of [new Error('e'), 'x', undefined]) {
       const proxy = new Proxy(new A(1), {
         getPrototypeOf() {

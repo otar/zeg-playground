@@ -1,5 +1,5 @@
-// A strict TypeScript project that imports zeg through the package name (REQ-138).
-import { zeg, command, query, ZegError, type GlobOutput } from '@otar/zeg';
+// A strict TypeScript project that imports Zeg through the package name (REQ-138).
+import { Zeg, command, query, ZegError, type GlobOutput } from '@otar/zeg';
 
 class GetUser {
   email: string;
@@ -21,7 +21,7 @@ const queries: GlobOutput = {
 };
 
 export async function check(): Promise<string> {
-  zeg({ queries: [queries] });
+  Zeg({ queries: [queries] });
   const user = await query<{ email: string }>(new GetUser('a@b.c'));
   const done: undefined = await command(new GetUser('a@b.c'));
   const error = new ZegError('INVALID_CONFIG', 'text');
@@ -29,7 +29,7 @@ export async function check(): Promise<string> {
   void (await query(new GetUser('a@b.c'))).email;
   // @ts-expect-error: a message must be an object
   await command('RegisterUser');
-  // @ts-expect-error: zeg() has no option handlers
-  zeg({ handlers: queries });
+  // @ts-expect-error: Zeg() has no option handlers
+  Zeg({ handlers: queries });
   return `${user.email} ${error.code} ${String(done)}`;
 }

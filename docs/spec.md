@@ -1,6 +1,6 @@
-# zeg: specification (phase 2)
+# Zeg: specification (phase 2)
 
-This document contains the numbered requirements for zeg. Phase 3 implements them, and phase 4 tests them [D-62 to D-64]. The IDs in brackets, for example [D-11], refer to `docs/decisions.md`. The API and the examples are in `docs/syntax.md`.
+This document contains the numbered requirements for Zeg. Phase 3 implements them, and phase 4 tests them [D-62 to D-64]. The IDs in brackets, for example [D-11], refer to `docs/decisions.md`. The API and the examples are in `docs/syntax.md`.
 
 ## 1. Conventions
 
@@ -65,7 +65,7 @@ These words have one meaning in the scenarios:
 
 - `cmd` and `qry` are hand-written glob outputs. A hand-written glob output has the same shape as the output of `import.meta.glob(patterns, { eager: true })`.
 - `output` is the glob output that the Given line describes. "`cmd` plus a file" means `{ ...cmd, [path]: module }`.
-- If a scenario defines its own handler class `H` for a message class `M`, the test calls `zeg()` with the pair `{ './M.js': { default: M }, './MHandler.js': { default: H } }`. This rule does not apply if the scenario shows its own call to `zeg()`.
+- If a scenario defines its own handler class `H` for a message class `M`, the test calls `Zeg()` with the pair `{ './M.js': { default: M }, './MHandler.js': { default: H } }`. This rule does not apply if the scenario shows its own call to `Zeg()`.
 - "`AH` handles the message `m`" means that `calls` contains `['A', m]` after the dispatch. The same applies to the other handler classes of the fixtures.
 - If `X` is an error code, "throws `X`" means that the call throws a `ZegError` whose `code` is `X`. "Rejects with `X`" means the same for a Promise.
 - For another value `v`, "throws `v`" and "rejects with `v`" mean that the value is `v` itself (`Object.is`).
@@ -79,16 +79,16 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 
 1. The unit tests (type U) run in workerd with Vitest 4.1 and `@cloudflare/vitest-plugin` [D-68].
 2. The Wrangler configuration of the unit tests has no `main`. As a result, no Worker entry file exists, and no entry file runs before the tests (see background fact 13).
-3. No setup file of the unit tests calls `zeg()`.
+3. No setup file of the unit tests calls `Zeg()`.
 4. The unit tests import the library as `'@otar/zeg'`. The package refers to itself through its `exports` field, so the import resolves to `src/zeg.js` at the repository root. If Vite does not resolve the package name, the Vitest configuration adds an alias from `@otar/zeg` to `./src/zeg.js`.
-5. The tests of REQ-053, REQ-060 and REQ-062 need a module state without a call to `zeg()`. Each of these requirements has its own test file. Each such file runs its scenarios in the order of the requirement.
+5. The tests of REQ-053, REQ-060 and REQ-062 need a module state without a call to `Zeg()`. Each of these requirements has its own test file. Each such file runs its scenarios in the order of the requirement.
 6. The tests in one file run one after the other. They do not use `.concurrent`.
 7. The build tests (type B) and the static checks (types S and N) run in Node, because they start processes and read files [D-68].
 8. The unit tests and the Node tests are two projects of one Vitest configuration. The mutation tests use `vitest.mutation.config.js`, which contains only the unit project of this configuration. Stryker changes only `src/zeg.js`, and the run fails below a mutation score of 100% [D-75].
 
-## 2. The steps of zeg()
+## 2. The steps of Zeg()
 
-`zeg(options)` does these steps in this order. `zeg()` stops at the first check that fails. Steps Z1 to Z6 do not change the registry [D-39].
+`Zeg(options)` does these steps in this order. `Zeg()` stops at the first check that fails. Steps Z1 to Z6 do not change the registry [D-39].
 
 | Step | Action | If the step fails |
 | --- | --- | --- |
@@ -98,7 +98,7 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 | Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the glob output has at least one file path [D-09]. Check that the path ends in `.js` or `.ts`, and not in `.d.ts` [D-78]. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
 | Z5 | In each glob output, form the pairs. | Throw `INVALID_CONFIG`. |
 | Z6 | Across all glob outputs of both kinds, check that no two message classes have the same `prototype` object. | Throw `INVALID_CONFIG`. |
-| Z7 | Replace the registry with the new pairs. Mark zeg as configured. | This step cannot fail. |
+| Z7 | Replace the registry with the new pairs. Mark Zeg as configured. | This step cannot fail. |
 | Z8 | Return `undefined`. |  |
 
 The rules for the file paths:
@@ -122,9 +122,9 @@ The rules for the pairs (Z5):
 Other rules:
 
 - The implementation can do the check of Z6 in the same loop as Z5. A failed check of Z5 still comes before a failed check of Z6.
-- **(spec detail)** A hole in an array reads as `undefined`. As a result, `zeg()` throws `INVALID_CONFIG` for it.
-- **(spec detail)** `zeg()` reads the file paths of a glob output with `Object.keys()`. As a result, it reads only own, enumerable properties whose names are strings.
-- **(spec detail)** If user code throws a value while `zeg()` reads a value, `zeg()` throws that same value. Examples of user code are a getter, a Proxy trap or a module in an import cycle. The registry does not change. In an import cycle, a read of the default export can throw a `ReferenceError`. D-25 describes the other possible result, `undefined` values.
+- **(spec detail)** A hole in an array reads as `undefined`. As a result, `Zeg()` throws `INVALID_CONFIG` for it.
+- **(spec detail)** `Zeg()` reads the file paths of a glob output with `Object.keys()`. As a result, it reads only own, enumerable properties whose names are strings.
+- **(spec detail)** If user code throws a value while `Zeg()` reads a value, `Zeg()` throws that same value. Examples of user code are a getter, a Proxy trap or a module in an import cycle. The registry does not change. In an import cycle, a read of the default export can throw a `ReferenceError`. D-25 describes the other possible result, `undefined` values.
 - **(spec detail)** The error text of `INVALID_CONFIG` names the parts that the failed check concerns. These parts are the name of an unknown property, the option and the file path. If the option is an array, the text also names the position in the array, for example `commands[1] ./A.js`. For Z6, the text names both file paths.
 
 ## 3. The steps of a dispatch
@@ -135,7 +135,7 @@ Other rules:
 | --- | --- | --- |
 | S1 | Create the Promise that the call returns. |  |
 | S2 | Check that `message` is an object and not an array. Read `Object.getPrototypeOf(message)` one time. Check that the value is not `Object.prototype` and not `null` [D-27]. | Reject with a `TypeError`. |
-| S3 | Check that zeg is configured [D-46]. | Reject with `NOT_CONFIGURED`. |
+| S3 | Check that Zeg is configured [D-46]. | Reject with `NOT_CONFIGURED`. |
 | S4 | In the registry, find the pair of the kind whose message class has the `prototype` from S2 [D-16]. | Reject with `HANDLER_NOT_FOUND`. If the registry contains the prototype for the other kind, the error text contains the name of the other function and the key. If that option is an array, the text also contains the position [D-48]. |
 | S5 | Create the handler instance with `new HandlerClass()` [D-21]. | Reject with the value that the constructor throws. |
 | S6 | Read `instance.handle` and call it as a method, with one argument: `message` [D-18]. | Reject with the value that the read or the call throws. |
@@ -144,13 +144,13 @@ Other rules:
 
 Other rules:
 
-- **(spec detail)** S2 comes before S3. As a result, for an invalid message, the Promise rejects with a `TypeError` before and after the first call to `zeg()`.
+- **(spec detail)** S2 comes before S3. As a result, for an invalid message, the Promise rejects with a `TypeError` before and after the first call to `Zeg()`.
 - **(spec detail)** Steps S2 to S6 occur before `command()` or `query()` returns. As a result, `handle()` starts during the call.
 - **(spec detail)** S4 uses the registry that is active at the time of the call.
-- **(spec detail)** In S2 to S6, zeg reads no property of the message. S7 and S8 read the `then` property of the return value of `handle()`, as `await` and the resolution of a Promise do.
-- **(spec detail)** The error texts of a dispatch contain keys. No error text of zeg contains a class name.
+- **(spec detail)** In S2 to S6, Zeg reads no property of the message. S7 and S8 read the `then` property of the return value of `handle()`, as `await` and the resolution of a Promise do.
+- **(spec detail)** The error texts of a dispatch contain keys. No error text of Zeg contains a class name.
 - **(spec detail)** If user code throws a value during a step, the Promise rejects with that same value. Examples of user code are a Proxy trap, a handler constructor and `handle()`. The value can be any value. It can be a value that is not an `Error`.
-- **(spec detail)** S7 also waits for the return value of a command handler. Then zeg ignores the value [D-42].
+- **(spec detail)** S7 also waits for the return value of a command handler. Then Zeg ignores the value [D-42].
 - `command()` and `query()` never throw synchronously [D-41].
 
 ## 4. Requirements
@@ -163,7 +163,7 @@ Source: D-01, D-02, D-05. Test: U.
 
 - Given the package `@otar/zeg`
 - When a test reads the names of its module namespace
-- Then the names are exactly `zeg`, `command`, `query` and `ZegError`, and the package has no `default` export
+- Then the names are exactly `Zeg`, `command`, `query` and `ZegError`, and the package has no `default` export
 
 #### REQ-002 The library imports no modules
 
@@ -218,14 +218,14 @@ Source: D-79. Test: S.
 - Then `CHANGELOG.md` has a heading `## <version>` for the version of `package.json`, with an optional note after a space, for example `## 0.1.0 (unreleased)`
 - And the `files` field of `package.json` contains `CHANGELOG.md`
 
-### 4.2 zeg(): argument and options
+### 4.2 Zeg(): argument and options
 
-#### REQ-010 zeg() returns undefined
+#### REQ-010 Zeg() returns undefined
 
 Source: D-05, syntax.md 4.1. Test: U.
 
 - Given the options `{ commands: cmd }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the call returns `undefined`
 
 #### REQ-011 The argument must be a plain object
@@ -233,10 +233,10 @@ Source: D-05, syntax.md 4.1. Test: U.
 Source: D-37. Test: U.
 
 - Given each of these values: `undefined`, `null`, `'x'`, `1`, `[]`, `() => {}`, `new Map()`, `new A()`
-- When the test calls `zeg(value)`
+- When the test calls `Zeg(value)`
 - Then the call throws `INVALID_CONFIG`
 - Given `Object.create(null)`
-- When the test calls `zeg(value)`
+- When the test calls `Zeg(value)`
 - Then the call returns `undefined`
 
 #### REQ-012 The argument cannot have other properties
@@ -249,7 +249,7 @@ Source: D-37. Test: U.
   - `{ extra: undefined }`
   - an object with a property whose name is `Symbol('x')`
   - an object with the property `extra` that is not enumerable
-- When the test calls `zeg(value)`
+- When the test calls `Zeg(value)`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-013 An option with the value undefined is the same as a missing option
@@ -257,29 +257,29 @@ Source: D-37. Test: U.
 Source: D-35. Test: U.
 
 - Given the options `{ commands: undefined, queries: qry }`
-- When the test calls `zeg(options)` and then `await query(new Q(1))`
-- Then `zeg()` returns `undefined`, and the Promise resolves to `{ tag: 'Q', v: 1 }`
+- When the test calls `Zeg(options)` and then `await query(new Q(1))`
+- Then `Zeg()` returns `undefined`, and the Promise resolves to `{ tag: 'Q', v: 1 }`
 
 #### REQ-014 An option is a glob output or an array
 
 Source: D-09, D-37. Test: U.
 
 - Given each of these values for `commands`: `'x'`, `null`, `1`, `() => {}`, `new Map()`, `new A()`
-- When the test calls `zeg({ commands: value })`
+- When the test calls `Zeg({ commands: value })`
 - Then the call throws `INVALID_CONFIG`
 - Given the value `cmd`, and then the value `[cmd]`
-- When the test calls `zeg({ commands: value })` and then `await command(new A(1))`
-- Then `zeg()` returns `undefined`, and `AH` handles the message in both cases
+- When the test calls `Zeg({ commands: value })` and then `await command(new A(1))`
+- Then `Zeg()` returns `undefined`, and `AH` handles the message in both cases
 
 #### REQ-015 An array can be empty, and each entry must be a plain object
 
 Source: D-09, D-37. Test: U.
 
 - Given the options `{ commands: [] }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the call returns `undefined`
 - Given each of these arrays: `[cmd, 'x']`, `[cmd, null]`, `[cmd, []]`, `[cmd, new Map()]`, `[undefined]`, `[, cmd]`
-- When the test calls `zeg({ commands: array })`
+- When the test calls `Zeg({ commands: array })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-016 Each module in a glob output must be an object
@@ -288,7 +288,7 @@ Source: D-07, D-37. Test: U.
 
 - Given `cmd` plus a file `./B.js` whose module is one of these values: `() => {}`, `Object.assign(() => {}, { default: B })`, `null`, `'x'`
 - And the file `./BHandler.js` with the module `{ default: BH }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-017 Each file path must end in .js or .ts, but not in .d.ts
@@ -296,20 +296,20 @@ Source: D-07, D-37. Test: U.
 Source: D-37, D-78. Test: U.
 
 - Given `cmd` plus a file whose path is one of these values: `'./A.tsx'`, `'./A.mts'`, `'./A.cts'`, `'./A.jsx'`, `'./A.mjs'`, `'./A.cjs'`, `'./A.JS'`, `'./A'`, `'./A.d.ts'`, with the module `{ default: B }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 - Given `cmd` plus one of these pairs: `'./B.JS'` and `'./BHandler.JS'`, `'./B.d.ts'` and `'./B.dHandler.ts'`, with the modules `{ default: B }` and `{ default: BH }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`, and the error text contains the path of the message file
 
-#### REQ-018 zeg() ignores properties of a glob output that are not enumerable strings
+#### REQ-018 Zeg() ignores properties of a glob output that are not enumerable strings
 
 Source: D-07. Test: U.
 
 - **(spec detail)** Given `cmd` plus a property whose name is a symbol, with the module `{ default: B }`
 - And a property `./B.js` that is not enumerable, with the module `{ default: B }`
-- When the test calls `zeg({ commands: output })` and then `await command(new A(1))`
-- Then `zeg()` returns `undefined`, and `AH` handles the message
+- When the test calls `Zeg({ commands: output })` and then `await command(new A(1))`
+- Then `Zeg()` returns `undefined`, and `AH` handles the message
 
 #### REQ-019 A glob output must contain at least one file
 
@@ -320,19 +320,19 @@ Source: D-09, D-37. Test: U.
   - `Object.create(null)`
   - an object with only a property whose name is a symbol
   - an object with only a property `./B.js` that is not enumerable
-- When the test calls `zeg({ commands: output })` and `zeg({ queries: output })`
+- When the test calls `Zeg({ commands: output })` and `Zeg({ queries: output })`
 - Then each call throws `INVALID_CONFIG`
 - Given the options `{ commands: [cmd, {}] }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the call throws `INVALID_CONFIG`, and the error text contains `commands[1]`
 
-### 4.3 zeg(): files and pairs
+### 4.3 Zeg(): files and pairs
 
 #### REQ-020 A pair connects a message class to its handler class
 
 Source: D-11, D-16. Test: U.
 
-- Given `zeg({ commands: cmd })`
+- Given `Zeg({ commands: cmd })`
 - When the test calls `await command(new A(1))`
 - Then `AH` handles the message one time
 
@@ -341,7 +341,7 @@ Source: D-11, D-16. Test: U.
 Source: D-10, D-11, D-37. Test: U.
 
 - Given the glob output `{ './A.js': { default: A } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-022 A handler file must have a message file
@@ -349,7 +349,7 @@ Source: D-10, D-11, D-37. Test: U.
 Source: D-10, D-11, D-37. Test: U.
 
 - Given the glob output `{ './AHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-023 The files of a pair must be in the same folder
@@ -357,7 +357,7 @@ Source: D-10, D-11, D-37. Test: U.
 Source: D-11, D-37. Test: U.
 
 - Given the glob output `{ './x/A.js': { default: A }, './y/AHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-024 The file names of a pair must match exactly
@@ -367,7 +367,7 @@ Source: D-11, D-37. Test: U.
 - Given each of these glob outputs:
   - `{ './A.js': { default: A }, './aHandler.js': { default: AH } }`
   - `{ './a.js': { default: A }, './AHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-025 Pairs can be in subfolders
@@ -375,7 +375,7 @@ Source: D-11, D-37. Test: U.
 Source: D-11. Test: U.
 
 - Given the glob output `{ './billing/A.js': { default: A }, './billing/AHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })` and then `await command(new A(1))`
+- When the test calls `Zeg({ commands: output })` and then `await command(new A(1))`
 - Then `AH` handles the message
 
 #### REQ-026 Files with the same name in different folders form different pairs
@@ -383,7 +383,7 @@ Source: D-11. Test: U.
 Source: D-12, D-17. Test: U.
 
 - Given the glob output `{ './billing/C.js': A, './billing/CHandler.js': AH, './shop/C.js': B, './shop/CHandler.js': BH }` (each value as `{ default: ... }`)
-- When the test calls `zeg({ commands: output })`, then `await command(new A(1))` and `await command(new B(2))`
+- When the test calls `Zeg({ commands: output })`, then `await command(new A(1))` and `await command(new B(2))`
 - Then `AH` handles the first message, and `BH` handles the second message
 
 #### REQ-027 The files of a pair must be in the same glob output
@@ -391,7 +391,7 @@ Source: D-12, D-17. Test: U.
 Source: D-11, D-37. Test: U.
 
 - Given the options `{ commands: [{ './A.js': { default: A } }, { './AHandler.js': { default: AH } }] }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-028 A handler file named only Handler.js or Handler.ts is not valid
@@ -402,7 +402,7 @@ Source: D-37, D-78. Test: U.
   - `{ './Handler.js': { default: AH } }`
   - `{ './.js': { default: A }, './Handler.js': { default: AH } }`
   - `{ '.js': { default: A }, 'Handler.js': { default: AH } }` (no folder: the file name is the full path)
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-029 Only a file whose name ends in Handler.js or Handler.ts is a handler file
@@ -410,13 +410,13 @@ Source: D-37, D-78. Test: U.
 Source: D-15, D-37, D-78. Test: U.
 
 - Given the glob output `{ './ErrorHandler.js': { default: AH }, './ErrorHandlerHandler.js': { default: AH } }`, also with `.ts` in place of `.js`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 - Given each of these glob outputs, also with `.ts` in place of `.js`:
   - `{ './Error.js': { default: A }, './ErrorHandler.js': { default: AH } }`
   - `{ './Handlers.js': { default: A }, './HandlersHandler.js': { default: AH } }`
   - `{ './Ahandler.js': { default: A }, './AhandlerHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })` and then `await command(new A(1))`
+- When the test calls `Zeg({ commands: output })` and then `await command(new A(1))`
 - Then `AH` handles the message
 
 #### REQ-030 Each file must be part of a pair
@@ -424,7 +424,7 @@ Source: D-15, D-37, D-78. Test: U.
 Source: D-10, D-37. Test: U.
 
 - Given `cmd` plus a file `./email.js` that is not part of a pair, with one of these modules: `{ welcomeText() {} }`, `{ default: class {} }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-031 File paths can have any prefix
@@ -435,7 +435,7 @@ Source: D-11, syntax.md 7.2. Test: U.
   - `'A.js'` and `'AHandler.js'`
   - `'../src/A.js'` and `'../src/AHandler.js'`
   - `'/src/A.js'` and `'/src/AHandler.js'`
-- When the test calls `zeg()` with a glob output that has these paths, and then `await command(new A(1))`
+- When the test calls `Zeg()` with a glob output that has these paths, and then `await command(new A(1))`
 - Then `AH` handles the message
 
 #### REQ-032 Real glob outputs work
@@ -445,15 +445,15 @@ Source: D-07, D-37. Test: U.
 - Given the folder `test/fixtures/queries/` with these files:
   - `Ping.js` with a default class
   - `PingHandler.js` with a default class whose `handle()` returns `'pong'`
-- When the test calls `zeg({ queries: import.meta.glob('./fixtures/queries/**/*.js', { eager: true }) })` and then `await query(new Ping())`
-- Then `zeg()` returns `undefined`, and the Promise resolves to `'pong'`
+- When the test calls `Zeg({ queries: import.meta.glob('./fixtures/queries/**/*.js', { eager: true }) })` and then `await query(new Ping())`
+- Then `Zeg()` returns `undefined`, and the Promise resolves to `'pong'`
 - Given the same folder and the lazy glob `import.meta.glob('./fixtures/queries/**/*.js')`
-- When the test calls `zeg({ queries: output })`
+- When the test calls `Zeg({ queries: output })`
 - Then the call throws `INVALID_CONFIG`
 - Given the folder `test/fixtures/reexport/`, which is not in `test/fixtures/queries/`, with these files:
   - `A.js` with a default class and `AHandler.js` with a default handler class
   - `Copy.js` with `export { default } from './A.js'` and `CopyHandler.js` with a default handler class
-- When the test calls `zeg({ commands: import.meta.glob('./fixtures/reexport/*.js', { eager: true }) })`
+- When the test calls `Zeg({ commands: import.meta.glob('./fixtures/reexport/*.js', { eager: true }) })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-033 A handler file cannot use a handler file as its message file
@@ -461,7 +461,7 @@ Source: D-07, D-37. Test: U.
 Source: D-15, D-37. Test: U.
 
 - Given `cmd` plus the file `./AHandlerHandler.js` with the module `{ default: AH }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`, because `./AHandler.js` is a handler file and not a message file
 
 #### REQ-034 Handler files can be in a separate folder
@@ -475,12 +475,12 @@ Source: D-11, syntax.md 3.9. Test: U.
 - And these two globs, which use the Vite option `base`:
   - `messages = import.meta.glob(['./**/*.js', '!**/*Handler.js'], { eager: true, base: './fixtures/split/queries' })`
   - `handlers = import.meta.glob('./**/*Handler.js', { eager: true, base: './fixtures/split/query-handlers' })`
-- When the test calls `zeg({ queries: { ...messages, ...handlers } })`
+- When the test calls `Zeg({ queries: { ...messages, ...handlers } })`
 - Then the file paths of `messages` are `./Ping.js` and `./sub/Ping.js`, and the file paths of `handlers` are `./PingHandler.js` and `./sub/PingHandler.js`
-- And `zeg()` returns `undefined`
+- And `Zeg()` returns `undefined`
 - And `query()` resolves to `'split pong'` for the message class of `queries/Ping.js` and to `'sub pong'` for the message class of `queries/sub/Ping.js`
 - Given `messages` and the handler glob without the option `base`: `import.meta.glob('./fixtures/split/query-handlers/**/*Handler.js', { eager: true })`
-- When the test calls `zeg()` with the merged glob outputs
+- When the test calls `Zeg()` with the merged glob outputs
 - Then the call throws `INVALID_CONFIG`, because the file paths of the handler files do not match the file paths of the message files
 
 #### REQ-035 Message files and handler files can be .ts files
@@ -490,36 +490,36 @@ Source: D-78. Test: U.
 - Given the folder `test/fixtures/ts/` with these files:
   - `Ping.ts` with a default class, and `PingHandler.ts` with a default class whose `handle()` returns `pong` plus the text of the message
   - `sub/Echo.ts` with a default class, and `sub/EchoHandler.ts` with a default class whose `handle()` returns the text of the message
-- When the test calls `zeg({ queries: import.meta.glob('./fixtures/ts/**/*.ts', { eager: true }) })`
-- Then `zeg()` returns `undefined`, and `query()` resolves to the value of the handler for both message classes
+- When the test calls `Zeg({ queries: import.meta.glob('./fixtures/ts/**/*.ts', { eager: true }) })`
+- Then `Zeg()` returns `undefined`, and `query()` resolves to the value of the handler for both message classes
 
 #### REQ-036 A pair uses one extension
 
 Source: D-78. Test: U.
 
 - Given the glob output `{ './B.ts': { default: B }, './BHandler.js': { default: BH } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`, and the error text contains `./BHandler.ts`
 - Given the glob output `{ './BHandler.ts': { default: BH }, './B.js': { default: B } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`, and the error text contains `./B.ts`
 - Given `cmd` plus `./A.ts` with the module `{ default: B }` and `./AHandler.ts` with the module `{ default: BH }`
-- When the test calls `zeg({ commands: output })`, `await command(new A(1))` and `await command(new B(2))`
+- When the test calls `Zeg({ commands: output })`, `await command(new A(1))` and `await command(new B(2))`
 - Then `AH` handles the first message, and `BH` handles the second message
 
-### 4.4 zeg(): classes
+### 4.4 Zeg(): classes
 
-#### REQ-040 zeg() reads only the default export
+#### REQ-040 Zeg() reads only the default export
 
 Source: D-13, D-37. Test: U.
 
 - Given the glob output `{ './A.js': { default: A, other: 1 }, './AHandler.js': { default: AH, X: class {} } }`
-- When the test calls `zeg({ commands: output })` and then `await command(new A(1))`
+- When the test calls `Zeg({ commands: output })` and then `await command(new A(1))`
 - Then `AH` handles the message
 - Given each of these glob outputs:
   - `{ './A.js': { A }, './AHandler.js': { default: AH } }`
   - `{ './A.js': { default: A }, './AHandler.js': { AH } }`
-- When the test calls `zeg({ commands: output })`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-041 A message class must be a function with a prototype object
@@ -527,10 +527,10 @@ Source: D-13, D-37. Test: U.
 Source: D-20, D-37. Test: U.
 
 - Given each of these values as the default export of `./A.js`: `() => {}`, `async function () {}`, `{}`, `'x'`, `undefined`, `null`, `{ prototype: {} }`
-- When the test calls `zeg()` with that file and `./AHandler.js`
+- When the test calls `Zeg()` with that file and `./AHandler.js`
 - Then the call throws `INVALID_CONFIG`
 - Given a class, and then a function declared with `function`, as the default export of `./A.js`
-- When the test calls `zeg()` with that file and `./AHandler.js`
+- When the test calls `Zeg()` with that file and `./AHandler.js`
 - Then the call returns `undefined`
 
 #### REQ-042 A handler class must have a handle() method on its prototype
@@ -541,7 +541,7 @@ Source: D-19, D-37. Test: U.
   - a class with the method `handle()`
   - a class that inherits `handle()` from a base class
   - a function declared with `function`, with `prototype.handle` set to a function
-- When the test calls `zeg()` with `./A.js` and that file
+- When the test calls `Zeg()` with `./A.js` and that file
 - Then the call returns `undefined`
 - Given each of these values as the default export of `./AHandler.js`:
   - a class without `handle()`
@@ -550,7 +550,7 @@ Source: D-19, D-37. Test: U.
   - a class with only a static method `handle()`
   - an arrow function
   - the object `{ handle() {} }`
-- When the test calls `zeg()` with `./A.js` and that file
+- When the test calls `Zeg()` with `./A.js` and that file
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-043 Two message files cannot have the same message class
@@ -562,7 +562,7 @@ Source: D-37. Test: U.
   - `{ commands: [cmd, cmd] }` (the same class in two glob outputs)
   - `{ commands: cmd, queries: cmd }` (the same class in both kinds)
   - `{ commands: { ...cmd, './B.js': { default: F }, './BHandler.js': { default: AH } } }`, where `F` is a function declared with `function`, and `F.prototype` is `A.prototype`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-044 Two handler files can have the same handler class
@@ -570,7 +570,7 @@ Source: D-37. Test: U.
 Source: D-40. Test: U.
 
 - Given the glob output `{ ...cmd, './B.js': { default: B }, './BHandler.js': { default: AH } }`
-- When the test calls `zeg({ commands: output })`, then `await command(new A(1))` and `await command(new B(2))`
+- When the test calls `Zeg({ commands: output })`, then `await command(new A(1))` and `await command(new B(2))`
 - Then `calls` contains `['A', message]` for each message
 
 #### REQ-045 Anonymous classes are valid
@@ -578,66 +578,66 @@ Source: D-40. Test: U.
 Source: D-08. Test: U.
 
 - Given a pair whose message class and handler class have the `name` `''`
-- When the test calls `zeg()` and then dispatches an instance of the message class
+- When the test calls `Zeg()` and then dispatches an instance of the message class
 - Then the handler class handles the message
 
-### 4.5 zeg(): state and errors
+### 4.5 Zeg(): state and errors
 
-#### REQ-050 Each call to zeg() replaces the registry
+#### REQ-050 Each call to Zeg() replaces the registry
 
 Source: D-35. Test: U.
 
-- Given `zeg({ commands: cmd })` and then `zeg({ queries: qry })`
+- Given `Zeg({ commands: cmd })` and then `Zeg({ queries: qry })`
 - When the test calls `command(new A(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`
-- **(spec detail)** Given `zeg({ commands: cmd })`
-- When the test calls `const p = command(new A(1))`, then `zeg({})`, and then `await p`
-- Then `AH` handles the message, because the dispatch started before the second call to `zeg()`
+- **(spec detail)** Given `Zeg({ commands: cmd })`
+- When the test calls `const p = command(new A(1))`, then `Zeg({})`, and then `await p`
+- Then `AH` handles the message, because the dispatch started before the second call to `Zeg()`
 
-#### REQ-051 zeg({}) creates an empty registry
+#### REQ-051 Zeg({}) creates an empty registry
 
 Source: D-36. Test: U.
 
-- Given `zeg({})`
+- Given `Zeg({})`
 - When the test calls `command(new A(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`
 
-#### REQ-052 A call to zeg() that throws does not change the registry
+#### REQ-052 A call to Zeg() that throws does not change the registry
 
 Source: D-39. Test: U.
 
-- Given `zeg({ commands: cmd })`, and then a call `zeg({ commands: { './X.js': { default: B } } })` that throws `INVALID_CONFIG`
+- Given `Zeg({ commands: cmd })`, and then a call `Zeg({ commands: { './X.js': { default: B } } })` that throws `INVALID_CONFIG`
 - When the test calls `await command(new A(1))`
 - Then `AH` handles the message
 
-#### REQ-053 The first call to zeg() that returns configures zeg
+#### REQ-053 The first call to Zeg() that returns configures Zeg
 
 Source: D-46. Test: U. The test of this requirement is in its own test file (section 1.5).
 
-- Given a module state in which no call to `zeg()` occurred
+- Given a module state in which no call to `Zeg()` occurred
 - When the test calls `command(new A(1))`
 - Then the Promise rejects with `NOT_CONFIGURED`
-- Given a first call to `zeg()` that throws `INVALID_CONFIG`
+- Given a first call to `Zeg()` that throws `INVALID_CONFIG`
 - When the test calls `command(new A(1))`
 - Then the Promise rejects with `NOT_CONFIGURED`
-- Given a call `zeg({})` that returns
+- Given a call `Zeg({})` that returns
 - When the test calls `command(new A(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`
 
-#### REQ-054 zeg() copies the entries of the glob outputs
+#### REQ-054 Zeg() copies the entries of the glob outputs
 
 Source: D-35. Test: U.
 
-- **(spec detail)** Given `const output = { ...cmd }` and `zeg({ commands: output })`
+- **(spec detail)** Given `const output = { ...cmd }` and `Zeg({ commands: output })`
 - When the test deletes the properties of `output` and then calls `await command(new A(1))`
 - Then `AH` handles the message
 
-#### REQ-055 A value that user code throws in zeg() reaches the caller unchanged
+#### REQ-055 A value that user code throws in Zeg() reaches the caller unchanged
 
 Source: D-39. Test: U.
 
-- **(spec detail)** Given `zeg({ commands: cmd })`, and then a glob output with an enumerable getter for `./B.js` that throws the value `e`, for example `{ ...cmd, get './B.js'() { throw e; } }`
-- When the test calls `zeg({ commands: output })`
+- **(spec detail)** Given `Zeg({ commands: cmd })`, and then a glob output with an enumerable getter for `./B.js` that throws the value `e`, for example `{ ...cmd, get './B.js'() { throw e; } }`
+- When the test calls `Zeg({ commands: output })`
 - Then the call throws `e`
 - And after `await command(new A(1))`, `AH` handles the message
 
@@ -646,17 +646,17 @@ Source: D-39. Test: U.
 Source: D-54. Test: U.
 
 - **(spec detail)** Given the options `{ commands: [cmd, { './B.js': { default: B } }] }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the error text contains `commands[1]` and `./B.js`
 - Given the options of the first case of REQ-043
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the error text contains `./A.js` and `./B.js`
 - Given the options `{ extra: 1 }`
-- When the test calls `zeg(options)`
+- When the test calls `Zeg(options)`
 - Then the error text contains `extra`
 - The error text is not part of the API [D-54]. The tests check only these parts of the text, the start of the text (REQ-113) and the hints of REQ-058.
 
-#### REQ-057 zeg() stops at the first check that fails
+#### REQ-057 Zeg() stops at the first check that fails
 
 Source: D-37, D-39. Test: U.
 
@@ -664,17 +664,17 @@ Source: D-37, D-39. Test: U.
   - `badPath = { './B.tsx': { default: B } }`, which fails the path check of Z4
   - `unpaired = { './B.js': { default: B } }`, which passes Z4 and fails Z5
   - `throwing`, a glob output with an enumerable getter for `./C.js` that throws the value `e`
-- When the test calls `zeg({ commands: [badPath, throwing] })`
+- When the test calls `Zeg({ commands: [badPath, throwing] })`
 - Then the call throws `INVALID_CONFIG`, because Z4 reads `badPath` first
-- When the test calls `zeg({ commands: [throwing, badPath] })`
+- When the test calls `Zeg({ commands: [throwing, badPath] })`
 - Then the call throws `e`
-- When the test calls `zeg({ commands: [unpaired, throwing] })`
+- When the test calls `Zeg({ commands: [unpaired, throwing] })`
 - Then the call throws `e`, because Z4 reads all glob outputs before Z5 forms the pairs
-- When the test calls `zeg({ commands: badPath, queries: throwing })`
-- Then the call throws `INVALID_CONFIG`, because `zeg()` reads `commands` before `queries`
-- When the test calls `zeg({ commands: throwing, queries: 'x' })`
+- When the test calls `Zeg({ commands: badPath, queries: throwing })`
+- Then the call throws `INVALID_CONFIG`, because `Zeg()` reads `commands` before `queries`
+- When the test calls `Zeg({ commands: throwing, queries: 'x' })`
 - Then the call throws `INVALID_CONFIG`, because Z3 checks both options before Z4 reads a glob output
-- When the test calls `zeg({ commands: [cmd, cmd, { './X.js': { default: B } }] })`
+- When the test calls `Zeg({ commands: [cmd, cmd, { './X.js': { default: B } }] })`
 - Then the call throws `INVALID_CONFIG`, and the error text contains `commands[2]` and `./X.js`, because a failed check of Z5 comes before a failed check of Z6
 
 #### REQ-058 The error texts of common mistakes name the fix
@@ -685,15 +685,15 @@ Source: D-54. Test: U.
 
   | Mistake | The error text contains |
   | --- | --- |
-  | `zeg({ extra: 1 })` | `The options are commands and queries` |
-  | `zeg({ commands: {} })` | `Check the glob pattern` |
+  | `Zeg({ extra: 1 })` | `The options are commands and queries` |
+  | `Zeg({ commands: {} })` | `Check the glob pattern` |
   | `cmd` plus `./B.js` with a function as its module (a lazy glob) | `{ eager: true }` |
   | `cmd` plus `./B.js` with the class `B` as its module (the glob option `import: 'default'`) | `without the import option` |
   | a pair of `B` and a handler class with `handle` as a class field | `on its prototype` |
-  | `command(new Map())` after `zeg({ commands: cmd, ... })` | `is not the default export of a message file in commands` |
+  | `command(new Map())` after `Zeg({ commands: cmd, ... })` | `is not the default export of a message file in commands` |
   | `query(new B(1))` with a handler of `B` that returns `undefined` | `Return null for no value` |
 
-- When the test calls `zeg()` or dispatches the message
+- When the test calls `Zeg()` or dispatches the message
 - Then the error has the code of section 2 or section 3, and its text contains the part of the table
 
 ### 4.6 Dispatch: the message
@@ -702,11 +702,11 @@ Source: D-54. Test: U.
 
 Source: D-41. Test: U. The test of this requirement is in its own test file (section 1.5).
 
-- **(spec detail)** Given a module state in which no call to `zeg()` occurred
+- **(spec detail)** Given a module state in which no call to `Zeg()` occurred
 - And each of these messages: `new A(1)`, `new Q(1)`, `new Map()`, `Object.create(A.prototype)` and each value of REQ-061
 - When the test calls `command(message)` and `query(message)`
 - Then each call returns a native `Promise` and does not throw
-- Given `zeg({ commands: cmd, queries: qry })` and the same messages
+- Given `Zeg({ commands: cmd, queries: qry })` and the same messages
 - When the test calls `command(message)` and `query(message)`
 - Then each call returns a native `Promise` and does not throw
 - The test catches each rejection.
@@ -715,7 +715,7 @@ Source: D-41. Test: U. The test of this requirement is in its own test file (sec
 
 Source: D-27, D-45. Test: U.
 
-- Given `zeg({ commands: cmd, queries: qry })`
+- Given `Zeg({ commands: cmd, queries: qry })`
 - And each of these values: `undefined`, `null`, `1`, `'x'`, `true`, `Symbol()`, `1n`, `() => {}`, `A` (the class itself), `[]`, `{}`, `Object.create(null)`
 - When the test calls `command(value)` and `query(value)`
 - Then each Promise rejects with a `TypeError`, which is not a `ZegError`
@@ -725,7 +725,7 @@ Source: D-27, D-45. Test: U.
 
 Source: D-45, D-46. Test: U. The test of this requirement is in its own test file (section 1.5).
 
-- **(spec detail)** Given a module state in which no call to `zeg()` occurred
+- **(spec detail)** Given a module state in which no call to `Zeg()` occurred
 - When the test calls `command(null)`
 - Then the Promise rejects with a `TypeError`
 
@@ -733,15 +733,15 @@ Source: D-45, D-46. Test: U. The test of this requirement is in its own test fil
 
 Source: D-27, D-47. Test: U.
 
-- Given `zeg({ commands: cmd, queries: qry })`
+- Given `Zeg({ commands: cmd, queries: qry })`
 - When the test calls `command()` and `query()` with `new Map()` and with `new Date()`
 - Then each Promise rejects with `HANDLER_NOT_FOUND`
 
-#### REQ-064 zeg reads no property of the message
+#### REQ-064 Zeg reads no property of the message
 
 Source: D-16. Test: U.
 
-- **(spec detail)** Given `zeg({ commands: cmd })` and a message `new A(1)` with an own getter `constructor` that throws
+- **(spec detail)** Given `Zeg({ commands: cmd })` and a message `new A(1)` with an own getter `constructor` that throws
 - When the test calls `await command(message)`
 - Then `AH` handles the message
 - Given a Proxy of `new A(1)`. Its `getPrototypeOf` trap counts its calls and returns `A.prototype`. Its `get` trap throws for the property `constructor` and forwards all other properties.
@@ -757,7 +757,7 @@ Source: D-16. Test: U.
 
 Source: D-16. Test: U.
 
-- Given `zeg({ commands: cmd })`
+- Given `Zeg({ commands: cmd })`
 - When the test calls `await command(Object.create(A.prototype))`
 - Then `AH` handles the message
 - Given a message `new A(1)` with the own property `constructor` set to `Q`
@@ -768,7 +768,7 @@ Source: D-16. Test: U.
 
 Source: D-47. Test: U.
 
-- Given `zeg({ commands: cmd, queries: qry })`
+- Given `Zeg({ commands: cmd, queries: qry })`
 - When the test calls `command(new (class {})())` and `query(new (class {})())`
 - Then each Promise rejects with `HANDLER_NOT_FOUND`
 - **(spec detail)** Given `class UniqueName987 {}`
@@ -779,10 +779,10 @@ Source: D-47. Test: U.
 
 Source: D-28. Test: U.
 
-- Given `class S extends A {}` and `zeg({ commands: cmd })`
+- Given `class S extends A {}` and `Zeg({ commands: cmd })`
 - When the test calls `command(new S(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`
-- Given `class S extends A {}` and `zeg({ commands: { ...cmd, './S.js': { default: S }, './SHandler.js': { default: BH } } })`
+- Given `class S extends A {}` and `Zeg({ commands: { ...cmd, './S.js': { default: S }, './SHandler.js': { default: BH } } })`
 - When the test calls `await command(new S(1))`
 - Then `BH` handles the message, and `AH` does not
 
@@ -790,7 +790,7 @@ Source: D-28. Test: U.
 
 Source: D-47, D-48. Test: U.
 
-- Given `zeg({ commands: cmd, queries: qry })`
+- Given `Zeg({ commands: cmd, queries: qry })`
 - When the test calls `query(new A(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`, and the error text contains `command()` and `./A`
 - When the test calls `command(new Q(1))`
@@ -801,7 +801,7 @@ Source: D-47, D-48. Test: U.
 
 Source: D-48. Test: U.
 
-- Given `zeg({ commands: cmd, queries: [{ './B.js': { default: B }, './BHandler.js': { default: BH } }, qry] })`
+- Given `Zeg({ commands: cmd, queries: [{ './B.js': { default: B }, './BHandler.js': { default: BH } }, qry] })`
 - When the test calls `command(new Q(1))`
 - Then the Promise rejects with `HANDLER_NOT_FOUND`, and the error text contains `queries[1]`
 
@@ -809,11 +809,11 @@ Source: D-48. Test: U.
 
 Source: D-09, D-12, D-17. Test: U.
 
-- Given `zeg({ commands: [{ './R.js': A, './RHandler.js': AH }, { './R.js': B, './RHandler.js': BH }] })` (each value as `{ default: ... }`)
+- Given `Zeg({ commands: [{ './R.js': A, './RHandler.js': AH }, { './R.js': B, './RHandler.js': BH }] })` (each value as `{ default: ... }`)
 - When the test calls `await command(new A(1))` and `await command(new B(2))`
 - Then `AH` handles the first message, and `BH` handles the second message
 
-#### REQ-076 zeg does not use class names
+#### REQ-076 Zeg does not use class names
 
 Source: D-08. Test: U.
 
@@ -854,11 +854,11 @@ Source: D-18, D-22, D-29. Test: U.
 
 Source: D-41. Test: U.
 
-- **(spec detail)** Given `zeg({ commands: cmd })`
+- **(spec detail)** Given `Zeg({ commands: cmd })`
 - When the test calls `command(new A(1))` without `await` and reads `calls` on the next line
 - Then `calls` contains the message
 
-#### REQ-084 zeg does not change the message
+#### REQ-084 Zeg does not change the message
 
 Source: D-29. Test: U.
 
@@ -880,11 +880,11 @@ Source: D-29, D-49. Test: U.
 Source: D-04, D-23. Test: U.
 
 - Given a handler class `AD` whose `handle()` calls `await command(new B(1))` and `await query(new Q(1))`, and pushes the result of the query to `calls`
-- And `zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: AD }, './B.js': { default: B }, './BHandler.js': { default: BH } }, queries: qry })`
+- And `Zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: AD }, './B.js': { default: B }, './BHandler.js': { default: BH } }, queries: qry })`
 - When the test calls `await command(new A(1))`
 - Then `BH` handles its message, and `calls` contains `{ tag: 'Q', v: 1 }`
 
-#### REQ-087 zeg has no limit for nested dispatches
+#### REQ-087 Zeg has no limit for nested dispatches
 
 Source: D-24. Test: U.
 
@@ -900,7 +900,7 @@ Source: D-18. Test: U.
 - When the test calls `await query()` with a message of each pair
 - Then both Promises resolve to `{ v: 1 }`
 
-#### REQ-089 zeg calls the handle() of the instance
+#### REQ-089 Zeg calls the handle() of the instance
 
 Source: D-19, D-21. Test: U.
 
@@ -911,8 +911,8 @@ Source: D-19, D-21. Test: U.
 - When the test calls `command(message)`
 - Then the Promise rejects with a `TypeError`
 - Given a generator function `G` declared with `function*`, with `G.prototype.handle` set to a function
-- When the test calls `zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: G } } })` and then `command(new A(1))`
-- Then `zeg()` returns `undefined`, and the Promise rejects with the `TypeError` from `new`
+- When the test calls `Zeg({ commands: { './A.js': { default: A }, './AHandler.js': { default: G } } })` and then `command(new A(1))`
+- Then `Zeg()` returns `undefined`, and the Promise rejects with the `TypeError` from `new`
 
 ### 4.9 Dispatch: the result
 
@@ -949,7 +949,7 @@ Source: D-44. Test: U.
 - When the test calls `query(message)` for each handler
 - Then each Promise rejects with `UNDEFINED_RESULT`
 
-#### REQ-094 zeg resolves a thenable from handle()
+#### REQ-094 Zeg resolves a thenable from handle()
 
 Source: D-42, D-43. Test: U.
 
@@ -1014,7 +1014,7 @@ Source: D-51. Test: U.
 - Then the values are `'ANY'` and `42`
 - **(spec detail)** The constructor calls `Error` with the second argument. As a result, `new ZegError(42).message` is `''`.
 
-#### REQ-112 zeg adds no other properties
+#### REQ-112 Zeg adds no other properties
 
 Source: D-52. Test: U.
 
@@ -1022,14 +1022,14 @@ Source: D-52. Test: U.
 - When the test reads `Reflect.ownKeys(error)`
 - Then each name is `stack`, `message`, `name` or `code`, and `'cause' in error` is `false`
 
-#### REQ-113 Each ZegError from zeg has a known code
+#### REQ-113 Each ZegError from Zeg has a known code
 
 Source: D-53. Test: U.
 
-- Given each `ZegError` that zeg creates in the scenarios of a test file
+- Given each `ZegError` that Zeg creates in the scenarios of a test file
 - When a helper of that test file reads the error
 - Then its `code` is `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` or `UNDEFINED_RESULT`
-- **(spec detail)** And its `message` starts with `zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
+- **(spec detail)** And its `message` starts with `Zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
 
 ### 4.12 Build and runtime
 
@@ -1146,7 +1146,7 @@ Source: D-76. Test: S.
 
 - Given `src/zeg.js`
 - When a static check reads it
-- Then it has exactly four lines that start with `export`: the class `ZegError` and the functions `zeg`, `command` and `query`
+- Then it has exactly four lines that start with `export`: the class `ZegError` and the functions `Zeg`, `command` and `query`
 - And a docblock (`/** ... */`) comes directly before each of these lines
 - And no comment contains `@license`, `@preserve`, `/*!` or `//!`
 
@@ -1168,7 +1168,7 @@ Source: D-57. Test: S.
 - Then the command ends with the exit code 0 and writes no output
 - And the formatted file is equal to the committed `src/zeg.d.ts`
 
-#### REQ-138 A strict TypeScript project can import zeg
+#### REQ-138 A strict TypeScript project can import Zeg
 
 Source: D-57, D-77. Test: S.
 
@@ -1176,7 +1176,7 @@ Source: D-57, D-77. Test: S.
 - And `test/types/consumer.ts`, which imports `@otar/zeg` and uses the four exports
 - And `consumer.ts` has a `// @ts-expect-error` line for each of these mistakes:
   - `command('RegisterUser')`
-  - `zeg({ handlers: queries })`
+  - `Zeg({ handlers: queries })`
   - `.email` on the result of `query()` without a type argument
 - When a static check runs `tsc -p test/types/tsconfig.json`
 - Then the command ends with the exit code 0 and writes no output
@@ -1186,25 +1186,25 @@ Source: D-57, D-77. Test: S.
 These rules come from this spec, not from a decision. When the user approves phase 2, the user also approves them.
 
 1. Rules 2 to 8 of the test environment in section 1.5.
-2. `zeg()` stops at the first check that fails, in the order of section 2. It handles `commands` before `queries`, the entries of an array in index order and the files in `Object.keys()` order (REQ-057).
-3. `zeg()` reads the names of all own properties of the options, also symbol names and the names of properties that are not enumerable (Z2, REQ-012). D-37 does not state this detail.
-4. `zeg()` reads the file paths of a glob output with `Object.keys()` (REQ-018).
-5. A hole in an array reads as `undefined`, so `zeg()` throws `INVALID_CONFIG` for it (REQ-015).
-6. If user code throws a value while `zeg()` reads a value, `zeg()` throws that same value, and the registry does not change (REQ-055).
+2. `Zeg()` stops at the first check that fails, in the order of section 2. It handles `commands` before `queries`, the entries of an array in index order and the files in `Object.keys()` order (REQ-057).
+3. `Zeg()` reads the names of all own properties of the options, also symbol names and the names of properties that are not enumerable (Z2, REQ-012). D-37 does not state this detail.
+4. `Zeg()` reads the file paths of a glob output with `Object.keys()` (REQ-018).
+5. A hole in an array reads as `undefined`, so `Zeg()` throws `INVALID_CONFIG` for it (REQ-015).
+6. If user code throws a value while `Zeg()` reads a value, `Zeg()` throws that same value, and the registry does not change (REQ-055).
 7. The error text of `INVALID_CONFIG` names the unknown property, the option, the position in the array and the file path. For Z6, it names both file paths (REQ-056).
-8. `zeg()` copies the entries of the glob outputs. Later changes to these objects have no effect (REQ-054).
-9. S2 comes before S3. For an invalid message, the Promise rejects with a `TypeError` also before the first call to `zeg()` (REQ-062).
+8. `Zeg()` copies the entries of the glob outputs. Later changes to these objects have no effect (REQ-054).
+9. S2 comes before S3. For an invalid message, the Promise rejects with a `TypeError` also before the first call to `Zeg()` (REQ-062).
 10. `handle()` starts during the call to `command()` or `query()` (REQ-083).
 11. S4 uses the registry that is active at the time of the call (REQ-050).
-12. In S2 to S6, zeg reads no property of the message. It reads `Object.getPrototypeOf(message)` one time (REQ-064).
-13. No error text of zeg contains a class name (REQ-071).
+12. In S2 to S6, Zeg reads no property of the message. It reads `Object.getPrototypeOf(message)` one time (REQ-064).
+13. No error text of Zeg contains a class name (REQ-071).
 14. If user code throws a value during a dispatch, the Promise rejects with that same value. This is also true for a value that is not an `Error` (REQ-064, REQ-101).
-15. zeg calls `instance.handle`. An own property `handle` of the instance has priority over the prototype method (REQ-089).
+15. Zeg calls `instance.handle`. An own property `handle` of the instance has priority over the prototype method (REQ-089).
 16. `command()` also waits for a thenable that a command handler returns, and then ignores its value (REQ-094).
 17. The hint in the error text contains the literal text `command()` or `query()` (REQ-073).
 18. `command()` and `query()` return a native `Promise` (REQ-060).
 19. `new ZegError(code)` without a second argument has the `message` `''`, as for `Error` (REQ-111).
-20. The `message` of each `ZegError` that zeg creates starts with `zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-113).
+20. The `message` of each `ZegError` that Zeg creates starts with `Zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-113).
 21. `LICENSE` contains the text `MIT License` (REQ-004).
 22. `examples/basic-worker/` contains the example project of syntax.md section 3, plus the route `GET /wrong-kind` (REQ-120).
 23. The example Worker has no `compatibility_flags` (REQ-123).
@@ -1239,7 +1239,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-22 | REQ-082, REQ-123 |
 | D-23 | REQ-086 |
 | D-24 | REQ-087 |
-| D-25, D-26 | Documentation only. These rules describe user code and module loading. Section 2 states what `zeg()` does if a read throws. |
+| D-25, D-26 | Documentation only. These rules describe user code and module loading. Section 2 states what `Zeg()` does if a read throws. |
 | D-27 | REQ-061, REQ-063 |
 | D-28 | REQ-072 |
 | D-29 | REQ-082, REQ-084, REQ-085 |
@@ -1281,3 +1281,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-77 | REQ-136, REQ-138 |
 | D-78 | REQ-017, REQ-028, REQ-029, REQ-035, REQ-036 |
 | D-79 | REQ-003, REQ-007 |
+| D-80 | REQ-001, REQ-113, REQ-135 |

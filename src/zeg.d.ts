@@ -6,10 +6,10 @@ export type GlobOutput = Record<string, unknown>;
  * @typedef {Record<string, unknown>} GlobOutput
  */
 /**
- * The error class of zeg. Use the class and the `code` to identify an error. The error text can
+ * The error class of Zeg. Use the class and the `code` to identify an error. The error text can
  * change in any version.
  *
- * zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and
+ * Zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and
  * `UNDEFINED_RESULT`.
  *
  * @example
@@ -35,7 +35,7 @@ export declare class ZegError extends Error {
 /**
  * Sets the pairs of message classes and handler classes. Each call replaces all pairs.
  *
- * `zeg()` checks all options before it changes the pairs. If `zeg()` throws, the pairs of the
+ * `Zeg()` checks all options before it changes the pairs. If `Zeg()` throws, the pairs of the
  * previous call stay active.
  *
  * @param {object} options The glob outputs of the command files and the query files.
@@ -43,26 +43,26 @@ export declare class ZegError extends Error {
  * @param {GlobOutput | GlobOutput[]} [options.queries] The query files.
  * @returns {undefined}
  * @throws {ZegError} With the code `INVALID_CONFIG` if the options, the files, the pairs or the
- *   classes are not valid. If user code throws a value while `zeg()` reads the options, `zeg()`
+ *   classes are not valid. If user code throws a value while `Zeg()` reads the options, `Zeg()`
  *   throws the same value. Examples are a getter, a Proxy or a module in an import cycle.
  * @example
- * zeg({
+ * Zeg({
  *   commands: import.meta.glob('./commands/*.js', { eager: true }),
  *   queries: import.meta.glob('./queries/*.js', { eager: true }),
  * });
  */
-export declare function zeg(options: {
+export declare function Zeg(options: {
   commands?: GlobOutput | GlobOutput[];
   queries?: GlobOutput | GlobOutput[];
 }): undefined;
 /**
- * Dispatches a command to its handler. zeg finds the handler through the class of the message.
+ * Dispatches a command to its handler. Zeg finds the handler through the class of the message.
  *
  * @param {object} message An instance of a message class from the `commands` option.
  * @returns {Promise<undefined>} Resolves to `undefined` when `handle()` is complete. Rejects with
  *   a `TypeError` if the message is not an object, or if it is `null`, a function, an array or a
  *   plain object. Rejects with a `ZegError` with the code `NOT_CONFIGURED` or `HANDLER_NOT_FOUND`
- *   if zeg cannot find the handler. If a step of the dispatch throws a value, rejects with the
+ *   if Zeg cannot find the handler. If a step of the dispatch throws a value, rejects with the
  *   same value. Examples are a Proxy trap of the message, the handler constructor and the call of
  *   `handle()`. If the Promise from `handle()` rejects, rejects with the same value.
  * @example
@@ -70,7 +70,7 @@ export declare function zeg(options: {
  */
 export declare function command(message: object): Promise<undefined>;
 /**
- * Dispatches a query to its handler. zeg finds the handler through the class of the message.
+ * Dispatches a query to its handler. Zeg finds the handler through the class of the message.
  *
  * @template [T=unknown]
  * @param {object} message An instance of a message class from the `queries` option.

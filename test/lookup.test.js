@@ -1,6 +1,6 @@
 // docs/spec.md section 4.7: REQ-070 to REQ-076.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, Q, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
 import {
   checkSeen,
@@ -17,7 +17,7 @@ beforeEach(() => {
 
 describe('4.7 dispatch: the lookup', () => {
   it('REQ-070 the lookup uses the prototype of the message', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     const m1 = Object.create(A.prototype);
     await command(m1);
     expectHandled('A', m1);
@@ -28,20 +28,20 @@ describe('4.7 dispatch: the lookup', () => {
   });
 
   it('REQ-071 a dispatch of a class without a pair rejects with HANDLER_NOT_FOUND', async () => {
-    zeg({ commands: cmd, queries: qry });
+    Zeg({ commands: cmd, queries: qry });
     await expectRejects('HANDLER_NOT_FOUND', command(new (class {})()));
     await expectRejects('HANDLER_NOT_FOUND', query(new (class {})()));
   });
 
   it('REQ-071 the error text does not contain the class name', async () => {
-    zeg({ commands: cmd, queries: qry });
+    Zeg({ commands: cmd, queries: qry });
     class UniqueName987 {}
     expect(UniqueName987.name).toBe('UniqueName987');
     const error = await expectRejects('HANDLER_NOT_FOUND', command(new UniqueName987()));
     expect(error.message).not.toContain('UniqueName987');
   });
 
-  it('REQ-071 (section 3) no error text of zeg contains a class name: the hint, UNDEFINED_RESULT and Z6', async () => {
+  it('REQ-071 (section 3) no error text of Zeg contains a class name: the hint, UNDEFINED_RESULT and Z6', async () => {
     class UniqueName987 {}
     class UniqueHandler654 {
       handle() {}
@@ -50,7 +50,7 @@ describe('4.7 dispatch: the lookup', () => {
       'UniqueName987',
       'UniqueHandler654',
     ]);
-    zeg({
+    Zeg({
       commands: pairOf(UniqueName987, UniqueHandler654, 'U'),
       queries: pairOf(Q, UniqueHandler654, 'Q'),
     });
@@ -70,9 +70,9 @@ describe('4.7 dispatch: the lookup', () => {
 
   it('REQ-072 a subclass needs its own pair', async () => {
     class S extends A {}
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     await expectRejects('HANDLER_NOT_FOUND', command(new S(1)));
-    zeg({ commands: { ...cmd, './S.js': { default: S }, './SHandler.js': { default: BH } } });
+    Zeg({ commands: { ...cmd, './S.js': { default: S }, './SHandler.js': { default: BH } } });
     const m = new S(1);
     await command(m);
     expectHandled('B', m);
@@ -80,7 +80,7 @@ describe('4.7 dispatch: the lookup', () => {
   });
 
   it('REQ-073 a dispatch of a message of the other kind rejects with HANDLER_NOT_FOUND and a hint', async () => {
-    zeg({ commands: cmd, queries: qry });
+    Zeg({ commands: cmd, queries: qry });
     const e1 = await expectRejects('HANDLER_NOT_FOUND', query(new A(1)));
     expect(e1.message).toContain('command()');
     expect(e1.message).toContain('./A');
@@ -91,13 +91,13 @@ describe('4.7 dispatch: the lookup', () => {
   });
 
   it('REQ-074 the hint names the position in an array', async () => {
-    zeg({ commands: cmd, queries: [pairOf(B, BH, 'B'), qry] });
+    Zeg({ commands: cmd, queries: [pairOf(B, BH, 'B'), qry] });
     const e = await expectRejects('HANDLER_NOT_FOUND', command(new Q(1)));
     expect(e.message).toContain('queries[1]');
   });
 
   it('REQ-075 two glob outputs can have the same file paths', async () => {
-    zeg({
+    Zeg({
       commands: [
         { './R.js': { default: A }, './RHandler.js': { default: AH } },
         { './R.js': { default: B }, './RHandler.js': { default: BH } },
@@ -112,7 +112,7 @@ describe('4.7 dispatch: the lookup', () => {
     expectHandled('B', b);
   });
 
-  it('REQ-076 zeg does not use class names', async () => {
+  it('REQ-076 Zeg does not use class names', async () => {
     const R1 = (() =>
       class R {
         constructor(v) {
@@ -127,7 +127,7 @@ describe('4.7 dispatch: the lookup', () => {
       })();
     expect(R1.name).toBe('R');
     expect(R2.name).toBe('R');
-    zeg({
+    Zeg({
       commands: {
         './x/R.js': { default: R1 },
         './x/RHandler.js': { default: AH },
@@ -150,7 +150,7 @@ describe('4.7 dispatch: the lookup', () => {
       static name = 'Other';
     }
     expect(S.name).toBe('Other');
-    zeg({ commands: { './S.js': { default: S }, './SHandler.js': { default: AH } } });
+    Zeg({ commands: { './S.js': { default: S }, './SHandler.js': { default: AH } } });
     const s = new S();
     await command(s);
     expectHandled('A', s);

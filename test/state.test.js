@@ -1,6 +1,6 @@
 // docs/spec.md section 4.5: REQ-050 to REQ-058. REQ-053 is in req-053.test.js.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command, query } from '@otar/zeg';
+import { Zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
 import {
   checkSeen,
@@ -17,19 +17,19 @@ beforeEach(() => {
   resetCalls();
 });
 
-describe('4.5 zeg(): state and errors', () => {
-  it('REQ-050 each call to zeg() replaces the registry', async () => {
-    zeg({ commands: cmd });
-    zeg({ queries: qry });
+describe('4.5 Zeg(): state and errors', () => {
+  it('REQ-050 each call to Zeg() replaces the registry', async () => {
+    Zeg({ commands: cmd });
+    Zeg({ queries: qry });
     await expectRejects('HANDLER_NOT_FOUND', command(new A(1)));
     expect(calls).toEqual([]);
   });
 
-  it('REQ-050 a dispatch that started before a later call to zeg() uses the registry of its call', async () => {
-    zeg({ commands: cmd });
+  it('REQ-050 a dispatch that started before a later call to Zeg() uses the registry of its call', async () => {
+    Zeg({ commands: cmd });
     const m = new A(1);
     const p = command(m);
-    expect(zeg({})).toBeUndefined();
+    expect(Zeg({})).toBeUndefined();
     expect(await settle(p)).toEqual({ ok: true, value: undefined });
     expectHandled('A', m);
     // The new, empty registry applies to the next call
@@ -47,23 +47,23 @@ describe('4.5 zeg(): state and errors', () => {
         calls.push(['H', m]);
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const m = new A(1);
     const p = command(m);
-    zeg({});
+    Zeg({});
     release();
     expect(await settle(p)).toEqual({ ok: true, value: undefined });
     expectHandled('H', m);
   });
 
-  it('REQ-051 zeg({}) creates an empty registry', async () => {
-    zeg({ commands: cmd, queries: qry });
-    zeg({});
+  it('REQ-051 Zeg({}) creates an empty registry', async () => {
+    Zeg({ commands: cmd, queries: qry });
+    Zeg({});
     await expectRejects('HANDLER_NOT_FOUND', command(new A(1)));
   });
 
-  it('REQ-052 a call to zeg() that throws does not change the registry', async () => {
-    zeg({ commands: cmd });
+  it('REQ-052 a call to Zeg() that throws does not change the registry', async () => {
+    Zeg({ commands: cmd });
     expectThrows('INVALID_CONFIG', { commands: { './X.js': { default: B } } });
     // Also a failure in Z6, after both kinds passed Z3 to Z5
     expectThrows('INVALID_CONFIG', { commands: pairOf(B, BH, 'B'), queries: [qry, qry] });
@@ -73,9 +73,9 @@ describe('4.5 zeg(): state and errors', () => {
     await expectRejects('HANDLER_NOT_FOUND', command(new B(1)));
   });
 
-  it('REQ-054 zeg() copies the entries of the glob outputs', async () => {
+  it('REQ-054 Zeg() copies the entries of the glob outputs', async () => {
     const output = { ...cmd };
-    zeg({ commands: output });
+    Zeg({ commands: output });
     for (const key of Object.keys(output)) {
       delete output[key];
     }
@@ -84,8 +84,8 @@ describe('4.5 zeg(): state and errors', () => {
     expectHandled('A', m);
   });
 
-  it('REQ-055 a value that user code throws in zeg() reaches the caller unchanged', async () => {
-    zeg({ commands: cmd });
+  it('REQ-055 a value that user code throws in Zeg() reaches the caller unchanged', async () => {
+    Zeg({ commands: cmd });
     const e = new Error('e');
     const output = {
       ...cmd,
@@ -100,7 +100,7 @@ describe('4.5 zeg(): state and errors', () => {
   });
 
   it('REQ-055 (section 2) other user code: getters and Proxy traps, also values that are not an Error', async () => {
-    zeg({ commands: cmd });
+    Zeg({ commands: cmd });
     for (const v of [new Error('v'), 'x', 42, undefined]) {
       const thrower = () => {
         throw v;
@@ -165,7 +165,7 @@ describe('4.5 zeg(): state and errors', () => {
     expect(e3.message).toContain('extra');
   });
 
-  it('REQ-057 zeg() stops at the first check that fails', () => {
+  it('REQ-057 Zeg() stops at the first check that fails', () => {
     const e = new Error('e');
     const badPath = { './B.tsx': { default: B } };
     const unpaired = { './B.js': { default: B } };
@@ -202,7 +202,7 @@ describe('4.5 zeg(): state and errors', () => {
     for (const [options, hint] of cases) {
       expect(expectThrows('INVALID_CONFIG', options).message).toContain(hint);
     }
-    zeg({
+    Zeg({
       commands: cmd,
       queries: pairOf(
         B,

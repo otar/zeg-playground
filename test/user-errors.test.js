@@ -1,6 +1,6 @@
 // docs/spec.md section 4.10: REQ-100 to REQ-103.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command } from '@otar/zeg';
+import { Zeg, command } from '@otar/zeg';
 import { A, calls, resetCalls } from './spec-fixtures.js';
 import { checkSeen, expectRejects, pairOf, returning, settle } from './helpers.js';
 
@@ -23,7 +23,7 @@ describe('4.10 dispatch: values that user code throws', () => {
       }
     }
     for (const H of [SyncHandler, AsyncHandler]) {
-      zeg({ commands: pairOf(A, H) });
+      Zeg({ commands: pairOf(A, H) });
       const r = await settle(command(new A(1)));
       expect(r.ok).toBe(false);
       expect(r.error).toBe(e);
@@ -33,7 +33,7 @@ describe('4.10 dispatch: values that user code throws', () => {
 
   it('REQ-101 a value that is not an Error also reaches the caller unchanged', async () => {
     for (const v of ['x', 42, undefined]) {
-      zeg({
+      Zeg({
         commands: pairOf(
           A,
           returning(() => {
@@ -58,7 +58,7 @@ describe('4.10 dispatch: values that user code throws', () => {
         handleRan++;
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const r = await settle(command(new A(1)));
     expect(r.ok).toBe(false);
     expect(r.error).toBe(e);
@@ -76,7 +76,7 @@ describe('4.10 dispatch: values that user code throws', () => {
         }
       }
     }
-    zeg({ commands: pairOf(A, H) });
+    Zeg({ commands: pairOf(A, H) });
     const error = await expectRejects('HANDLER_NOT_FOUND', command(new A(1)));
     expect(calls).toHaveLength(1);
     expect(error).toBe(calls[0]);
