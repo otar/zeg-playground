@@ -1037,7 +1037,7 @@ Source: D-53. Test: U.
 
 #### REQ-120 The example Worker works after a production build
 
-Source: D-04, D-05, D-06, D-07, D-69, syntax.md 3. Test: B.
+Source: D-04, D-05, D-06, D-07, D-69, D-81, D-82, syntax.md 3. Test: B.
 
 - **(spec detail)** Given `examples/basic-worker/`. It contains the example project of syntax.md section 3 without the test files, plus one route:
 
@@ -1055,6 +1055,7 @@ Source: D-04, D-05, D-06, D-07, D-69, syntax.md 3. Test: B.
 
 - Then each response has the expected status and body
 - And the console output of `vite preview` contains `welcome mail to a@b.c`, which shows the nested dispatch
+- And the console output contains the lines `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` and `query ./queries/GetUser` of the middleware function `logDispatch`
 
 #### REQ-121 The example Worker works after a minified build
 
@@ -1417,6 +1418,6 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-78 | REQ-017, REQ-028, REQ-029, REQ-035, REQ-036 |
 | D-79 | REQ-003, REQ-007 |
 | D-80 | REQ-001, REQ-113, REQ-135 |
-| D-81 | REQ-140, REQ-141, REQ-148 |
-| D-82 | REQ-147, REQ-148, REQ-149 |
+| D-81 | REQ-120, REQ-140, REQ-141, REQ-148 |
+| D-82 | REQ-120, REQ-147, REQ-148, REQ-149 |
 | D-83 | REQ-142 to REQ-146, REQ-149 |

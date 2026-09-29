@@ -127,9 +127,16 @@ async function checkRequests(args = []) {
       400,
       '{"name":"ZegError","code":"HANDLER_NOT_FOUND"}',
     ]);
-    // The nested dispatch writes this line
+    // The nested dispatch writes the first line. The middleware function logDispatch writes one line for
+    // each dispatch.
+    const lines = [
+      'welcome mail to a@b.c',
+      'command ./commands/RegisterUser',
+      'command ./commands/SendWelcomeEmail',
+      'query ./queries/GetUser',
+    ];
     expect(
-      await waitFor(() => server.output.includes('welcome mail to a@b.c'), 10_000),
+      await waitFor(() => lines.every((line) => server.output.includes(line)), 10_000),
       server.output,
     ).toBe(true);
   } finally {

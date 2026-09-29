@@ -29,6 +29,8 @@ migrations/
   0001_create_users.sql
 src/
   index.js
+  middleware/
+    logDispatch.js
   commands/
     RegisterUser.js
     RegisterUserHandler.js
@@ -246,12 +248,14 @@ The rules for handler classes:
 ```js
 // src/index.js
 import { Zeg, command, query } from '@otar/zeg';
+import { logDispatch } from './middleware/logDispatch.js';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
+  middleware: [logDispatch],
 });
 
 export default {
@@ -269,6 +273,23 @@ The caller imports a message class with a default import. You can use any local 
 `Zeg()` is module-level code in the Worker entry file. As a result, it runs one time for each isolate [D-04, D-05]. If `Zeg()` throws, the Worker does not start, and `vite dev` does not start [D-38].
 
 Vite reads the glob patterns at build time. For this reason, each pattern must be a string literal in your own file [D-07].
+
+The middleware function `logDispatch` writes one line for each dispatch, for example `command ./commands/RegisterUser`. It also writes each error, and it gives the same error to the caller. Its file is outside the folders of the globs [D-81]. Section 3.11 describes middleware functions.
+
+```js
+// src/middleware/logDispatch.js
+export async function logDispatch(message, next, { kind, key }) {
+  console.log(`${kind} ${key}`);
+  try {
+    return await next();
+  } catch (error) {
+    console.error(`${kind} ${key} failed`, error);
+    throw error;
+  }
+}
+```
+
+A `POST /` request writes three lines: `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` (the nested dispatch) and `query ./queries/GetUser`.
 
 ### 3.8 Files in several folders
 
@@ -452,7 +473,7 @@ Zeg({
 });
 ```
 
-Put the middleware files outside the folders of the globs, for example in `src/middleware/`. Each file that a glob finds must be part of a pair [D-10, D-81].
+Put the middleware files outside the folders of the globs, for example in `src/middleware/`. Each file that a glob finds must be part of a pair [D-10, D-81]. Section 3.7 shows the middleware function of the example project.
 
 A middleware function gets three arguments [D-83]:
 

@@ -1,11 +1,13 @@
 // src/index.js
 import { Zeg, command, query } from '@otar/zeg';
+import { logDispatch } from './middleware/logDispatch.js';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
+  middleware: [logDispatch],
 });
 
 export default {
