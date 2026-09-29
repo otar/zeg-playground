@@ -175,11 +175,11 @@ Source: D-03. Test: S.
 
 #### REQ-003 package.json has the decided fields
 
-Source: D-55, D-56, D-57. Test: S.
+Source: D-55, D-56, D-57, D-79. Test: S.
 
 - Given the file `package.json`
 - When a static check reads it
-- Then it has `"name": "@otar/zeg"`, a `"version"` in the form `major.minor.patch`, `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
+- Then it has `"name": "@otar/zeg"`, a `"version"` that is a valid semantic version number (for example `0.1.0` or `1.0.0-rc.1`), `"type": "module"`, `"exports": "./src/zeg.js"`, `"license": "MIT"` and `"publishConfig": { "access": "public" }`
 - And it has no `private`, `peerDependencies`, `types` or `typings` field
 - And its `dependencies` field is missing or empty
 - And its `scripts` field has no `build`, `prepare` or `prepublishOnly` script
@@ -215,7 +215,7 @@ Source: D-79. Test: S.
 
 - Given `package.json` and `CHANGELOG.md`
 - When a static check reads them
-- Then `CHANGELOG.md` has a heading `## <version>` for the version of `package.json`
+- Then `CHANGELOG.md` has a heading `## <version>` for the version of `package.json`, with an optional note after a space, for example `## 0.1.0 (unreleased)`
 - And the `files` field of `package.json` contains `CHANGELOG.md`
 
 ### 4.2 zeg(): argument and options
@@ -295,7 +295,7 @@ Source: D-07, D-37. Test: U.
 
 Source: D-37, D-78. Test: U.
 
-- Given `cmd` plus a file whose path is one of these values: `'./A.tsx'`, `'./A.mts'`, `'./A.cts'`, `'./A.jsx'`, `'./A.JS'`, `'./A'`, `'./A.d.ts'`, with the module `{ default: B }`
+- Given `cmd` plus a file whose path is one of these values: `'./A.tsx'`, `'./A.mts'`, `'./A.cts'`, `'./A.jsx'`, `'./A.mjs'`, `'./A.cjs'`, `'./A.JS'`, `'./A'`, `'./A.d.ts'`, with the module `{ default: B }`
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 - Given `cmd` plus one of these pairs: `'./B.JS'` and `'./BHandler.JS'`, `'./B.d.ts'` and `'./B.dHandler.ts'`, with the modules `{ default: B }` and `{ default: BH }`
@@ -315,7 +315,11 @@ Source: D-07. Test: U.
 
 Source: D-09, D-37. Test: U.
 
-- Given each of these glob outputs: `{}`, `Object.create(null)`, an object with only a property whose name is a symbol, and an object with only a property `./B.js` that is not enumerable
+- Given each of these glob outputs:
+  - `{}`
+  - `Object.create(null)`
+  - an object with only a property whose name is a symbol
+  - an object with only a property `./B.js` that is not enumerable
 - When the test calls `zeg({ commands: output })` and `zeg({ queries: output })`
 - Then each call throws `INVALID_CONFIG`
 - Given the options `{ commands: [cmd, {}] }`
@@ -392,22 +396,23 @@ Source: D-11, D-37. Test: U.
 
 #### REQ-028 A handler file named only Handler.js or Handler.ts is not valid
 
-Source: D-37. Test: U.
+Source: D-37, D-78. Test: U.
 
 - Given each of these glob outputs, also with `.ts` in place of `.js`:
   - `{ './Handler.js': { default: AH } }`
   - `{ './.js': { default: A }, './Handler.js': { default: AH } }`
+  - `{ '.js': { default: A }, 'Handler.js': { default: AH } }` (no folder: the file name is the full path)
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
 #### REQ-029 Only a file whose name ends in Handler.js or Handler.ts is a handler file
 
-Source: D-15, D-37. Test: U.
+Source: D-15, D-37, D-78. Test: U.
 
-- Given the glob output `{ './ErrorHandler.js': { default: AH }, './ErrorHandlerHandler.js': { default: AH } }`
+- Given the glob output `{ './ErrorHandler.js': { default: AH }, './ErrorHandlerHandler.js': { default: AH } }`, also with `.ts` in place of `.js`
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
-- Given each of these glob outputs:
+- Given each of these glob outputs, also with `.ts` in place of `.js`:
   - `{ './Error.js': { default: A }, './ErrorHandler.js': { default: AH } }`
   - `{ './Handlers.js': { default: A }, './HandlersHandler.js': { default: AH } }`
   - `{ './Ahandler.js': { default: A }, './AhandlerHandler.js': { default: AH } }`
@@ -494,10 +499,10 @@ Source: D-78. Test: U.
 
 - Given the glob output `{ './B.ts': { default: B }, './BHandler.js': { default: BH } }`
 - When the test calls `zeg({ commands: output })`
-- Then the call throws `INVALID_CONFIG`, and the error text contains `no handler file ./BHandler.ts`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `./BHandler.ts`
 - Given the glob output `{ './BHandler.ts': { default: BH }, './B.js': { default: B } }`
 - When the test calls `zeg({ commands: output })`
-- Then the call throws `INVALID_CONFIG`, and the error text contains `no message file ./B.ts`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `./B.ts`
 - Given `cmd` plus `./A.ts` with the module `{ default: B }` and `./AHandler.ts` with the module `{ default: BH }`
 - When the test calls `zeg({ commands: output })`, `await command(new A(1))` and `await command(new B(2))`
 - Then `AH` handles the first message, and `BH` handles the second message
@@ -1158,17 +1163,21 @@ Source: D-77. Test: S.
 
 Source: D-57. Test: S.
 
-- Given the script `types` of `package.json`, which runs `tsc -p jsconfig.json` with `--declaration`, `--emitDeclarationOnly`, `--rootDir src` and `--outDir src`, and then Prettier on `src/zeg.d.ts`
-- When a static check runs the same `tsc` command with an empty temporary folder as `--outDir`, and formats the output with Prettier
+- Given the script `types` of `package.json`, which runs `tsc -p jsconfig.json` with `--noEmit false`, `--declaration`, `--emitDeclarationOnly`, `--rootDir src` and `--outDir src`, and then Prettier on `src/zeg.d.ts`
+- When a static check runs the same `tsc` command with an empty temporary folder as `--outDir`, and formats the new `zeg.d.ts` with Prettier
 - Then the command ends with the exit code 0 and writes no output
-- And the formatted output is equal to the committed `src/zeg.d.ts`
+- And the formatted file is equal to the committed `src/zeg.d.ts`
 
 #### REQ-138 A strict TypeScript project can import zeg
 
 Source: D-57, D-77. Test: S.
 
 - Given `test/types/tsconfig.json` with `strict` and `noEmit` on, `skipLibCheck` off and no `allowJs`
-- And `test/types/consumer.ts`, which imports `@otar/zeg`, calls the four exports and contains `// @ts-expect-error` lines for `command('RegisterUser')`, `zeg({ handlers: queries })` and a property read on the result of `query()` without a type argument
+- And `test/types/consumer.ts`, which imports `@otar/zeg` and uses the four exports
+- And `consumer.ts` has a `// @ts-expect-error` line for each of these mistakes:
+  - `command('RegisterUser')`
+  - `zeg({ handlers: queries })`
+  - `.email` on the result of `query()` without a type argument
 - When a static check runs `tsc -p test/types/tsconfig.json`
 - Then the command ends with the exit code 0 and writes no output
 
@@ -1270,5 +1279,5 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-75 | REQ-133 |
 | D-76 | REQ-135 |
 | D-77 | REQ-136, REQ-138 |
-| D-78 | REQ-017, REQ-028, REQ-035, REQ-036 |
+| D-78 | REQ-017, REQ-028, REQ-029, REQ-035, REQ-036 |
 | D-79 | REQ-003, REQ-007 |

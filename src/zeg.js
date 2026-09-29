@@ -121,7 +121,7 @@ export function zeg(options) {
   for (const [kind, label, output] of outputs) {
     const files = new Map();
     const paths = Object.keys(output);
-    // A glob pattern with no match gives an empty glob output. Vite does not warn about it.
+    // A glob pattern with no match gives a glob output with no files. Vite does not warn about it.
     if (paths.length === 0) {
       fail(`${label}: the glob output has no files. Check the glob pattern`);
     }

@@ -372,9 +372,9 @@ With the option `base`, each file path in the glob output is relative to the bas
 
 Obey these rules:
 
-- The name of each handler file must end in `Handler.js`.
+- The name of each handler file must end in `Handler.js` or `Handler.ts`.
 - The handler folder must have the same subfolders as the message folder. For example, `src/commands/billing/ChargeCard.js` needs `src/command-handlers/billing/ChargeCardHandler.js`.
-- Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry. For `.ts` files, use `'!**/*Handler.ts'` and `'./**/*Handler.ts'`.
+- Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry. For `.ts` files, use `['./**/*.ts', '!**/*Handler.ts']` and `'./**/*Handler.ts'`.
 
 If a handler file imports a message class, it uses a path relative to its own folder. For example, `src/command-handlers/RegisterUserHandler.js` contains `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
 
@@ -438,7 +438,7 @@ The lab used this `tsconfig.json` (background fact 24):
 - `types: ["vite/client"]` gives the type of `import.meta.glob`.
 - TypeScript finds the types of zeg with the `moduleResolution` values `bundler`, `node16` and `nodenext`.
 - `query<T>()` sets the result type. zeg does not check this type at runtime.
-- A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders, or add `'!**/*.d.ts'` to the glob.
+- A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders. If one of these folders contains a `.d.ts` file, add `'!**/*.d.ts'` to the glob.
 
 ## 4. API
 
@@ -460,7 +460,7 @@ A glob output is the result of `import.meta.glob(patterns, { eager: true })`.
 
 - A glob output is a plain object. Each property name is a file path. Each property value is the module of that file (background fact 3).
 - An array of glob outputs is useful when the globs are in different files (section 3.8). An empty array is valid [D-09].
-- A glob output with no files is not valid, because this shows a glob pattern with no match. If a kind has no files yet, leave out its option or its array entry [D-09].
+- A glob output with no files is not valid, because it shows a glob pattern with no match, and such a pattern is usually a mistake. If a kind has no files yet, leave out its option or its array entry [D-09].
 - An option with the value `undefined` is the same as a missing option [D-35].
 - `zeg()` checks all files, pairs and classes. If a check fails, it throws a `ZegError` with the code `INVALID_CONFIG` [D-37]. See section 6.1.
 - `zeg()` checks all options before it changes the registry. If it throws, the handlers of the previous call stay active [D-39].
@@ -660,7 +660,7 @@ An error from `handle()` can be a `ZegError`. For example, a handler dispatches 
 
 ### 6.4 Example: one error boundary
 
-A `ZegError` shows a bug in the project, for example a missing pair or a message of the wrong kind. Do not show it to the user as a normal result. Put one error boundary in `fetch()`:
+A `ZegError` shows a bug in the project, for example a missing pair or a message of the wrong kind. Do not return a 4xx status for it. Put one error boundary in `fetch()`:
 
 ```js
 // src/index.js
@@ -674,7 +674,7 @@ export default {
       if (error instanceof NotFound) {
         return new Response('not found', { status: 404 });
       }
-      console.error(error); // each other error, also each ZegError, is a bug
+      console.error(error); // each other error, also each ZegError, shows a bug
       return new Response('internal error', { status: 500 });
     }
   },

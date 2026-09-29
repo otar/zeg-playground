@@ -74,7 +74,6 @@ The `users` Map is in the memory of one isolate, so this example is only a demo.
 **Why not a plain function call.**
 
 - The caller imports only the message class. It does not import the handler or the modules that the handler uses.
-- zeg checks all pairs when the Worker starts. A message file without a handler file stops `vite dev`, before the first request.
 - A test can replace a handler. It calls `zeg()` with a hand-written glob output (section 7.3 of `docs/syntax.md`).
 - The cost: each use case has one more file. "Go to definition" on `command(new X())` opens the message class, not the handler.
 
@@ -98,7 +97,7 @@ npm install @otar/zeg
 - **Classes, not names.** zeg finds the handler through the class of the message. The classes can be anonymous.
 - **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value from the handler, or rejects if that value is `undefined`.
 - **Errors at startup.** zeg checks all pairs when the Worker starts. A failed check stops the Worker before the first request.
-- **No build step.** The package contains the source file `src/zeg.js`, not a built file, and its type declarations. After esbuild minifies this file and gzip compresses it, its size is less than 1.5 KB.
+- **No build step.** The package contains the source file `src/zeg.js`, not a built file. It also contains the type declarations in `src/zeg.d.ts`. After esbuild minifies `src/zeg.js` and gzip compresses it, its size is less than 1.5 KB.
 
 ## Requirements
 

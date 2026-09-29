@@ -113,7 +113,17 @@ describe('4.2 zeg(): argument and options', () => {
   });
 
   it('REQ-017 each file path must end in .js or .ts, but not in .d.ts', () => {
-    for (const path of ['./A.tsx', './A.mts', './A.cts', './A.jsx', './A.JS', './A', './A.d.ts']) {
+    for (const path of [
+      './A.tsx',
+      './A.mts',
+      './A.cts',
+      './A.jsx',
+      './A.mjs',
+      './A.cjs',
+      './A.JS',
+      './A',
+      './A.d.ts',
+    ]) {
       const error = expectThrows('INVALID_CONFIG', {
         commands: { ...cmd, [path]: { default: B } },
       });

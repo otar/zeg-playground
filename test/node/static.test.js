@@ -75,7 +75,9 @@ describe('4.1 package', () => {
   it('REQ-003 package.json has the decided fields', () => {
     const pkg = readJson('package.json');
     expect(pkg.name).toBe('@otar/zeg');
-    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    expect(pkg.version).toMatch(
+      /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
+    );
     expect(pkg.type).toBe('module');
     expect(pkg.exports).toBe('./src/zeg.js');
     expect(pkg.license).toBe('MIT');

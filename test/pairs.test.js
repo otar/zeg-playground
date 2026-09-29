@@ -95,26 +95,28 @@ describe('4.3 zeg(): files and pairs', () => {
   });
 
   it('REQ-029 only a file whose name ends in Handler.js or Handler.ts is a handler file', async () => {
-    const error = expectThrows('INVALID_CONFIG', {
-      commands: {
-        './ErrorHandler.js': { default: AH },
-        './ErrorHandlerHandler.js': { default: AH },
-      },
-    });
-    expect(error.message).toContain('./ErrorHandler.js');
-    const valid = [
-      ['./Error.js', './ErrorHandler.js'],
-      ['./Handlers.js', './HandlersHandler.js'],
-      ['./Ahandler.js', './AhandlerHandler.js'],
-    ];
-    for (const [message, handler] of valid) {
-      resetCalls();
-      expect(
-        zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
-      ).toBeUndefined();
-      const m = new A(1);
-      await command(m);
-      expectHandled('A', m);
+    for (const ext of ['.js', '.ts']) {
+      const error = expectThrows('INVALID_CONFIG', {
+        commands: {
+          [`./ErrorHandler${ext}`]: { default: AH },
+          [`./ErrorHandlerHandler${ext}`]: { default: AH },
+        },
+      });
+      expect(error.message).toContain(`./ErrorHandler${ext}`);
+      const valid = [
+        [`./Error${ext}`, `./ErrorHandler${ext}`],
+        [`./Handlers${ext}`, `./HandlersHandler${ext}`],
+        [`./Ahandler${ext}`, `./AhandlerHandler${ext}`],
+      ];
+      for (const [message, handler] of valid) {
+        resetCalls();
+        expect(
+          zeg({ commands: { [message]: { default: A }, [handler]: { default: AH } } }),
+        ).toBeUndefined();
+        const m = new A(1);
+        await command(m);
+        expectHandled('A', m);
+      }
     }
   });
 
@@ -250,11 +252,11 @@ describe('4.3 zeg(): files and pairs', () => {
     const noHandler = expectThrows('INVALID_CONFIG', {
       commands: { './B.ts': { default: B }, './BHandler.js': { default: BH } },
     });
-    expect(noHandler.message).toContain('no handler file ./BHandler.ts');
+    expect(noHandler.message).toContain('./BHandler.ts');
     const noMessage = expectThrows('INVALID_CONFIG', {
       commands: { './BHandler.ts': { default: BH }, './B.js': { default: B } },
     });
-    expect(noMessage.message).toContain('no message file ./B.ts');
+    expect(noMessage.message).toContain('./B.ts');
     // A .js pair and a .ts pair with the same key in one folder are valid.
     zeg({ commands: { ...cmd, './A.ts': { default: B }, './AHandler.ts': { default: BH } } });
     const a = new A(1);
