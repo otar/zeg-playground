@@ -1,4 +1,20 @@
 export type GlobOutput = Record<string, unknown>;
+export type DispatchInfo = {
+  /**
+   * `'command'` for `command()`, `'query'` for `query()`.
+   */
+  kind: 'command' | 'query';
+  /**
+   * The file path of the message file without the extension, for example
+   * `'./commands/RegisterUser'`.
+   */
+  key: string;
+};
+export type Middleware = (
+  message: object,
+  next: () => Promise<unknown>,
+  info: DispatchInfo,
+) => unknown;
 /**
  * The result of `import.meta.glob(patterns, { eager: true })`. Each property name is a file path,
  * and each property value is the module of that file.
@@ -6,11 +22,33 @@ export type GlobOutput = Record<string, unknown>;
  * @typedef {Record<string, unknown>} GlobOutput
  */
 /**
+ * The kind and the key of a message, for a middleware function.
+ *
+ * @typedef {object} DispatchInfo
+ * @property {'command' | 'query'} kind `'command'` for `command()`, `'query'` for `query()`.
+ * @property {string} key The file path of the message file without the extension, for example
+ *   `'./commands/RegisterUser'`.
+ */
+/**
+ * A function that runs around the handler of each dispatch. It can do work before and after
+ * `next()`, change the result of a query, or stop the dispatch with an error. If it returns without
+ * a call to `next()`, the handler does not run.
+ *
+ * @callback Middleware
+ * @param {object} message The message, as the caller gave it.
+ * @param {() => Promise<unknown>} next Runs the next middleware function, or the handler after the
+ *   last function. It takes no arguments. For a query, it resolves to the result. For a command, it
+ *   resolves to `undefined`. A second call rejects with a `ZegError` with the code
+ *   `NEXT_CALLED_TWICE`.
+ * @param {DispatchInfo} info The kind and the key of the message.
+ * @returns {unknown} For a query, the result of the dispatch.
+ */
+/**
  * The error class of Zeg. Use the class and the `code` to identify an error. The error text can
  * change in any version.
  *
- * Zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and
- * `UNDEFINED_RESULT`.
+ * Zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND`, `UNDEFINED_RESULT`
+ * and `NEXT_CALLED_TWICE`.
  *
  * @example
  * try {
@@ -38,9 +76,12 @@ export declare class ZegError extends Error {
  * `Zeg()` checks all options before it changes the pairs. If `Zeg()` throws, the pairs of the
  * previous call stay active.
  *
- * @param {object} options The glob outputs of the command files and the query files.
+ * @param {object} options The glob outputs of the command files and the query files, and the
+ *   middleware functions.
  * @param {GlobOutput | GlobOutput[]} [options.commands] The command files.
  * @param {GlobOutput | GlobOutput[]} [options.queries] The query files.
+ * @param {Middleware[]} [options.middleware] The middleware functions of each dispatch. The first
+ *   function is the outermost. `Zeg()` copies the array.
  * @returns {undefined}
  * @throws {ZegError} With the code `INVALID_CONFIG` if the options, the files, the pairs or the
  *   classes are not valid. If user code throws a value while `Zeg()` reads the options, `Zeg()`
@@ -49,11 +90,13 @@ export declare class ZegError extends Error {
  * Zeg({
  *   commands: import.meta.glob('./commands/*.js', { eager: true }),
  *   queries: import.meta.glob('./queries/*.js', { eager: true }),
+ *   middleware: [logDispatch],
  * });
  */
 export declare function Zeg(options: {
   commands?: GlobOutput | GlobOutput[];
   queries?: GlobOutput | GlobOutput[];
+  middleware?: Middleware[];
 }): undefined;
 /**
  * Dispatches a command to its handler. Zeg finds the handler through the class of the message.

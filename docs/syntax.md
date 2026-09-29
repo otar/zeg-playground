@@ -440,6 +440,87 @@ The lab used this `tsconfig.json` (background fact 24):
 - `query<T>()` sets the result type. Zeg does not check this type at runtime.
 - A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `Zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders. If one of these folders contains a `.d.ts` file, add `'!**/*.d.ts'` to the glob.
 
+### 3.11 Middleware
+
+A middleware function runs around the handler of each dispatch [D-81, D-82]. Use it for work that many handlers need, for example a log, a check of the message or an error report. Give the functions to `Zeg()` in the option `middleware`:
+
+```js
+Zeg({
+  commands: import.meta.glob('./commands/**/*.js', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.js', { eager: true }),
+  middleware: [logErrors, requireEmail],
+});
+```
+
+Put the middleware files outside the folders of the globs, for example in `src/middleware/`. Each file that a glob finds must be part of a pair [D-10, D-81].
+
+A middleware function gets three arguments [D-83]:
+
+```
+middleware(message, next, info) -> a value, or a Promise of a value
+  message  the message, as the caller gave it [D-29]
+  next     a function without arguments. It runs the next middleware function, or the handler
+           after the last function. It returns a Promise.
+  info     { kind, key }. kind is 'command' or 'query'. key is the key of the message,
+           for example './commands/RegisterUser'.
+```
+
+- For a query, `next()` resolves to the value of the next middleware function or of the handler. For a command, it resolves to `undefined` [D-83].
+- The first function is the outermost. `middleware: [a, b]` runs the start of `a`, the start of `b`, the handler, the end of `b` and the end of `a` [D-81].
+- The functions run one time for each dispatch, after Zeg finds the handler. For a `TypeError`, `NOT_CONFIGURED` and `HANDLER_NOT_FOUND`, no middleware function runs [D-82].
+- A nested dispatch runs the functions again [D-82].
+- `Zeg()` copies the array. A dispatch uses the functions of the last `Zeg()` call before its start [D-39, D-82].
+
+This function logs each error and gives the same error to the caller:
+
+```js
+// src/middleware/logErrors.js
+export async function logErrors(message, next, { kind, key }) {
+  try {
+    return await next();
+  } catch (error) {
+    console.error(`${kind} ${key} failed`, error);
+    throw error;
+  }
+}
+```
+
+A middleware function can stop a dispatch. It throws, or it returns without a call to `next()`. Then the handler does not run. `BadRequest` is a class of the project, as `NotFound` in section 6.4:
+
+```js
+// src/middleware/requireEmail.js
+import { BadRequest } from '../errors.js';
+
+export function requireEmail(message, next) {
+  if ('email' in message && !String(message.email).includes('@')) {
+    throw new BadRequest('The email address is not valid');
+  }
+  return next();
+}
+```
+
+In TypeScript, use the type `Middleware`:
+
+```ts
+import type { Middleware } from '@otar/zeg';
+
+export const logDispatch: Middleware = (message, next, { kind, key }) => {
+  console.log(`${kind} ${key}`);
+  return next();
+};
+```
+
+Rules for middleware functions:
+
+- In a `try` block, write `return await next()`. Without `await`, the `catch` block does not get the error of the handler.
+- Call `next()` one time. A second call rejects with a `ZegError` with the code `NEXT_CALLED_TWICE` [D-83].
+- To use a function for one kind only, check `info.kind` in the function.
+- If the first middleware function gives `undefined` to `query()`, `query()` rejects with `UNDEFINED_RESULT` [D-44].
+- `handle()` starts during the call to `command()` or `query()` only if each middleware function calls `next()` before its first `await` [D-83].
+- A middleware function gets no `env` and no `Request` [D-22]. If it needs `env`, it imports `env` from `'cloudflare:workers'`. For an authorization check, put the user into the message.
+- D1 does not support `BEGIN` and `COMMIT`. As a result, a middleware function cannot put a handler into a D1 transaction. A handler can use `env.DB.batch()`, which runs its statements in one transaction.
+- In a deployed Worker, `Date.now()` changes only during I/O. As a result, a time measurement in a middleware function shows only the time of the I/O.
+
 ## 4. API
 
 The package `@otar/zeg` has four exports [D-02]:
@@ -448,12 +529,15 @@ The package `@otar/zeg` has four exports [D-02]:
 import { Zeg, command, query, ZegError } from '@otar/zeg';
 ```
 
+The docblocks also define the type names `GlobOutput`, `Middleware` and `DispatchInfo` for TypeScript. They are not values [D-02].
+
 ### 4.1 Zeg(options)
 
 ```
 Zeg(options) -> undefined
-  options.commands  optional. A glob output, or an array of glob outputs, for the command files.
-  options.queries   optional. A glob output, or an array of glob outputs, for the query files.
+  options.commands    optional. A glob output, or an array of glob outputs, for the command files.
+  options.queries     optional. A glob output, or an array of glob outputs, for the query files.
+  options.middleware  optional. An array of middleware functions (section 3.11).
 ```
 
 A glob output is the result of `import.meta.glob(patterns, { eager: true })`.
@@ -463,8 +547,8 @@ A glob output is the result of `import.meta.glob(patterns, { eager: true })`.
 - A glob output with no files is not valid, because it shows a glob pattern with no match, and such a pattern is usually a mistake. If a kind has no files yet, leave out its option or its array entry [D-09].
 - An option with the value `undefined` is the same as a missing option [D-35].
 - `Zeg()` checks all files, pairs and classes. If a check fails, it throws a `ZegError` with the code `INVALID_CONFIG` [D-37]. See section 6.1.
-- `Zeg()` checks all options before it changes the registry. If it throws, the handlers of the previous call stay active [D-39].
-- Each call replaces all handlers of the previous call [D-35].
+- `Zeg()` checks all options before it changes the registry and the middleware functions. If it throws, the handlers and the middleware functions of the previous call stay active [D-39].
+- Each call replaces all handlers and all middleware functions of the previous call [D-35].
 - `Zeg({})` is valid and creates an empty registry [D-36].
 
 ### 4.2 command(message)
@@ -476,6 +560,7 @@ command(message) -> Promise<undefined>
 - `message` must be an object. It must not be `null`, a function, an array or a plain object [D-27].
 - Zeg finds the handler through the class of `message` [D-16].
 - Zeg gives `message` to `handle()` as it is. It does not freeze, copy or change it [D-29].
+- The middleware functions run around `handle()` (section 3.11).
 - The Promise resolves to `undefined` when `handle()` is complete [D-42].
 - If an error occurs, the Promise rejects. `command()` never throws synchronously [D-41].
 
@@ -488,7 +573,8 @@ query(message) -> Promise<result>
 - `message` must be an object. It must not be `null`, a function, an array or a plain object [D-27].
 - Zeg finds the handler through the class of `message` [D-16].
 - Zeg gives `message` to `handle()` as it is. It does not freeze, copy or change it [D-29].
-- The Promise resolves to the return value of `handle()`, after `await` [D-43].
+- The middleware functions run around `handle()` (section 3.11).
+- The Promise resolves to the return value of `handle()`, after `await` [D-43]. With middleware functions, it resolves to the value of the first middleware function, after `await`.
 - If that value is `undefined`, the Promise rejects with a `ZegError` with the code `UNDEFINED_RESULT` [D-44].
 - `query()` never throws synchronously [D-41].
 
@@ -579,7 +665,8 @@ export default class {
 | `INVALID_CONFIG` | `Zeg()` throws | The options, the files, the pairs or the classes are not valid. See section 6.1. |
 | `NOT_CONFIGURED` | the Promise of `command()` or `query()` rejects | No call to `Zeg()` returned without an error before the dispatch [D-46]. |
 | `HANDLER_NOT_FOUND` | the Promise of `command()` or `query()` rejects | The class of the message is not a message class of this kind [D-47]. |
-| `UNDEFINED_RESULT` | the Promise of `query()` rejects | The query handler returned `undefined` [D-44]. |
+| `UNDEFINED_RESULT` | the Promise of `query()` rejects | The query handler or a middleware function returned `undefined` [D-44]. |
+| `NEXT_CALLED_TWICE` | the Promise of `command()` or `query()` rejects | A middleware function called `next()` a second time [D-83]. |
 
 ### 6.1 INVALID_CONFIG cases
 
@@ -591,6 +678,8 @@ Zeg();                                  // the argument is not an object
 Zeg({ handlers: {} });                  // unknown key
 Zeg({ commands: 'x' });                 // the value is not an object
 Zeg({ commands: [userCommands, 'x'] }); // an entry of the array is not a plain object
+Zeg({ middleware: logErrors });         // the value is not an array
+Zeg({ middleware: [logErrors, 'x'] });  // an entry of the array is not a function
 
 Zeg({ commands: import.meta.glob('./commands/**/*.js') });
 // a lazy glob: each value is a function, not a module
@@ -653,7 +742,7 @@ Zeg names the message file by its key, not by its class name. If the option is a
 These errors are not a `ZegError`:
 
 - If a message is not valid, the Promise rejects with a built-in `TypeError` [D-45].
-- If `new HandlerClass()` or `handle()` throws, the Promise rejects with the same error object [D-49].
+- If `new HandlerClass()`, `handle()` or a middleware function throws, the Promise rejects with the same error object [D-49].
 - If the top-level code of a message file or a handler file throws, the Worker fails at startup [D-26].
 
 An error from `handle()` can be a `ZegError`. For example, a handler dispatches another message, and the Promise of that dispatch rejects with `HANDLER_NOT_FOUND`. Zeg does not wrap this error. As a result, the caller cannot know if the error came from its own dispatch or from a nested dispatch.
@@ -799,8 +888,8 @@ it('returns null for an unknown user', async () => {
 
 ## 8. What Zeg does not do
 
-- no middleware, no events, no Cloudflare Queues [D-01]
-- no context argument for handlers [D-22]
+- no events, no Cloudflare Queues [D-01]. For a side effect after a command, the command handler dispatches another command.
+- no context argument for handlers and middleware functions [D-22]
 - no build with Wrangler only [D-06]
 - no class names for resolution [D-08]
 - no fallback to the handler of a parent class [D-28]

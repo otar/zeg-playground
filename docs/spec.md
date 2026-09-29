@@ -88,17 +88,17 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 
 ## 2. The steps of Zeg()
 
-`Zeg(options)` does these steps in this order. `Zeg()` stops at the first check that fails. Steps Z1 to Z6 do not change the registry [D-39].
+`Zeg(options)` does these steps in this order. `Zeg()` stops at the first check that fails. Steps Z1 to Z6 do not change the registry and the middleware functions [D-39].
 
 | Step | Action | If the step fails |
 | --- | --- | --- |
 | Z1 | Check that `options` is a plain object. | Throw `INVALID_CONFIG`. |
-| Z2 | Read the names of all own properties of `options`, also symbol names and the names of properties that are not enumerable. Check that each name is `commands` or `queries`. | Throw `INVALID_CONFIG`. |
-| Z3 | First for `commands`, then for `queries`, read the own property of `options` one time and make a list of glob outputs. For `undefined`, the list is empty. For a plain object, the list contains that object. For an array, the list contains the entries at the indexes 0 to `length - 1`. Each entry must be a plain object. | Throw `INVALID_CONFIG`. |
+| Z2 | Read the names of all own properties of `options`, also symbol names and the names of properties that are not enumerable. Check that each name is `commands`, `queries` or `middleware`. | Throw `INVALID_CONFIG`. |
+| Z3 | First for `commands`, then for `queries`, read the own property of `options` one time and make a list of glob outputs. For `undefined`, the list is empty. For a plain object, the list contains that object. For an array, the list contains the entries at the indexes 0 to `length - 1`. Each entry must be a plain object. Then read the own property `middleware` one time and make a copy of the list of middleware functions. For `undefined`, the list is empty. For an array, the list contains the entries at the indexes 0 to `length - 1`. Each entry must be a function [D-81]. | Throw `INVALID_CONFIG`. |
 | Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the glob output has at least one file path [D-09]. Check that the path ends in `.js` or `.ts`, and not in `.d.ts` [D-78]. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
 | Z5 | In each glob output, form the pairs. | Throw `INVALID_CONFIG`. |
 | Z6 | Across all glob outputs of both kinds, check that no two message classes have the same `prototype` object. | Throw `INVALID_CONFIG`. |
-| Z7 | Replace the registry with the new pairs. Mark Zeg as configured. | This step cannot fail. |
+| Z7 | Replace the registry with the new pairs, and the middleware functions with the new list [D-39]. Mark Zeg as configured. | This step cannot fail. |
 | Z8 | Return `undefined`. |  |
 
 The rules for the file paths:
@@ -137,20 +137,21 @@ Other rules:
 | S2 | Check that `message` is an object and not an array. Read `Object.getPrototypeOf(message)` one time. Check that the value is not `Object.prototype` and not `null` [D-27]. | Reject with a `TypeError`. |
 | S3 | Check that Zeg is configured [D-46]. | Reject with `NOT_CONFIGURED`. |
 | S4 | In the registry, find the pair of the kind whose message class has the `prototype` from S2 [D-16]. | Reject with `HANDLER_NOT_FOUND`. If the registry contains the prototype for the other kind, the error text contains the name of the other function and the key. If that option is an array, the text also contains the position [D-48]. |
-| S5 | Create the handler instance with `new HandlerClass()` [D-21]. | Reject with the value that the constructor throws. |
-| S6 | Read `instance.handle` and call it as a method, with one argument: `message` [D-18]. | Reject with the value that the read or the call throws. |
-| S7 | Wait for the return value of `handle()` with `await`. | Reject with the reason of the rejection. |
-| S8 | For `command()`, resolve to `undefined`. For `query()`, if the value is `undefined`, reject with `UNDEFINED_RESULT`. If not, resolve to the value [D-42, D-43, D-44]. |  |
+| S5 | Use the middleware functions that are active now [D-82]. Call the first function with `message`, `next` and `info` [D-83]. Each `next()` calls the next function. After the last function, `next()` does S6 to S8. For a query, `next()` resolves to the value of S8. For a command, it resolves to `undefined`. Without middleware functions, S5 does S6 to S8 directly. | Reject with the value that a middleware function throws, or with the reason of its rejected Promise. If a middleware function calls `next()` a second time, that call rejects with `NEXT_CALLED_TWICE`. |
+| S6 | Create the handler instance with `new HandlerClass()` [D-21]. | Reject with the value that the constructor throws. |
+| S7 | Read `instance.handle` and call it as a method, with one argument: `message` [D-18]. | Reject with the value that the read or the call throws. |
+| S8 | Wait for the return value of `handle()` with `await`. | Reject with the reason of the rejection. |
+| S9 | For `command()`, resolve to `undefined`. For `query()`, if the value of S5 is `undefined` after `await`, reject with `UNDEFINED_RESULT`. If not, resolve to the value [D-42, D-43, D-44]. |  |
 
 Other rules:
 
 - **(spec detail)** S2 comes before S3. As a result, for an invalid message, the Promise rejects with a `TypeError` before and after the first call to `Zeg()`.
-- **(spec detail)** Steps S2 to S6 occur before `command()` or `query()` returns. As a result, `handle()` starts during the call.
-- **(spec detail)** S4 uses the registry that is active at the time of the call.
-- **(spec detail)** In S2 to S6, Zeg reads no property of the message. S7 and S8 read the `then` property of the return value of `handle()`, as `await` and the resolution of a Promise do.
+- **(spec detail)** Steps S2 to S7 occur before `command()` or `query()` returns, if each middleware function calls `next()` before its first `await` [D-83]. As a result, `handle()` starts during the call.
+- **(spec detail)** S4 uses the registry that is active at the time of the call. S5 uses the middleware functions that are active at the time of the call. A later call to `Zeg()` does not change them for this dispatch [D-82].
+- **(spec detail)** In S2 to S7, Zeg reads no property of the message. S5, S8 and S9 read the `then` property of the return values of the middleware functions and of `handle()`, as `await` and the resolution of a Promise do.
 - **(spec detail)** The error texts of a dispatch contain keys. No error text of Zeg contains a class name.
 - **(spec detail)** If user code throws a value during a step, the Promise rejects with that same value. Examples of user code are a Proxy trap, a handler constructor and `handle()`. The value can be any value. It can be a value that is not an `Error`.
-- **(spec detail)** S7 also waits for the return value of a command handler. Then Zeg ignores the value [D-42].
+- **(spec detail)** S8 also waits for the return value of a command handler. Then Zeg ignores the value [D-42].
 - `command()` and `query()` never throw synchronously [D-41].
 
 ## 4. Requirements
@@ -685,7 +686,7 @@ Source: D-54. Test: U.
 
   | Mistake | The error text contains |
   | --- | --- |
-  | `Zeg({ extra: 1 })` | `The options are commands and queries` |
+  | `Zeg({ extra: 1 })` | `The options are commands, queries, middleware` |
   | `Zeg({ commands: {} })` | `Check the glob pattern` |
   | `cmd` plus `./B.js` with a function as its module (a lazy glob) | `{ eager: true }` |
   | `cmd` plus `./B.js` with the class `B` as its module (the glob option `import: 'default'`) | `without the import option` |
@@ -857,6 +858,7 @@ Source: D-41. Test: U.
 - **(spec detail)** Given `Zeg({ commands: cmd })`
 - When the test calls `command(new A(1))` without `await` and reads `calls` on the next line
 - Then `calls` contains the message
+- **(spec detail)** With middleware functions, this applies only if each middleware function calls `next()` before its first `await` (REQ-149).
 
 #### REQ-084 Zeg does not change the message
 
@@ -1028,7 +1030,7 @@ Source: D-53. Test: U.
 
 - Given each `ZegError` that Zeg creates in the scenarios of a test file
 - When a helper of that test file reads the error
-- Then its `code` is `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` or `UNDEFINED_RESULT`
+- Then its `code` is `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND`, `UNDEFINED_RESULT` or `NEXT_CALLED_TWICE`
 - **(spec detail)** And its `message` starts with `Zeg(): `, `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space.
 
 ### 4.12 Build and runtime
@@ -1107,7 +1109,7 @@ Source: D-71. Test: N.
 
 - Given `src/zeg.js`
 - When a check runs `esbuild --minify --format=esm` and then `gzip -9` on it
-- Then the result is 1536 bytes or less
+- Then the result is 2048 bytes or less
 
 #### REQ-133 CI runs all tests and checks, except the mutation tests
 
@@ -1173,13 +1175,144 @@ Source: D-57. Test: S.
 Source: D-57, D-77. Test: S.
 
 - Given `test/types/tsconfig.json` with `strict` and `noEmit` on, `skipLibCheck` off and no `allowJs`
-- And `test/types/consumer.ts`, which imports `@otar/zeg` and uses the four exports
+- And `test/types/consumer.ts`, which imports `@otar/zeg` and uses the four exports and the type names `GlobOutput`, `Middleware` and `DispatchInfo`
 - And `consumer.ts` has a `// @ts-expect-error` line for each of these mistakes:
   - `command('RegisterUser')`
   - `Zeg({ handlers: queries })`
   - `.email` on the result of `query()` without a type argument
+  - `Zeg({ middleware: ['x'] })`
+  - `next(1)` in a middleware function
 - When a static check runs `tsc -p test/types/tsconfig.json`
 - Then the command ends with the exit code 0 and writes no output
+
+### 4.14 Middleware
+
+The words of this section:
+
+- `around(tag)` is a middleware function. It pushes `` `${tag}>` `` to `calls`, then calls `await next()`, then pushes `` `<${tag}` `` to `calls`, and then returns the value of `next()`.
+
+#### REQ-140 The option middleware is an array of functions
+
+Source: D-35, D-37, D-81. Test: U.
+
+- Given the values `undefined`, `[]`, `[around('a')]` and `[around('a'), around('a')]`
+- When the test calls `Zeg({ commands: cmd, middleware: value })` for each value
+- Then each call returns `undefined`
+- Given the values `around('a')`, a function with two parameters, `{}`, the array-like object `{ 0: fn, length: 1 }`, `'x'` and `null`
+- When the test calls `Zeg({ commands: cmd, middleware: value })` for each value
+- Then each call throws `INVALID_CONFIG` with the error text `Zeg(): middleware must be an array of functions`
+- Given arrays with a function at index 0, and `'x'`, `null`, `{}`, `undefined` or a hole at index 1
+- When the test calls `Zeg({ commands: cmd, middleware: value })` for each array
+- Then each call throws `INVALID_CONFIG` with the error text `Zeg(): middleware[1] must be a function`
+- **(spec detail)** A hole reads as `undefined`, also if `Array.prototype` has a function at its index.
+- **(spec detail)** `Zeg()` reads only an own property `middleware`. If `Object.prototype.middleware` is `'x'`, `Zeg({ commands: cmd })` returns `undefined`, and no middleware function runs.
+
+#### REQ-141 The first middleware function is the outermost
+
+Source: D-81. Test: U.
+
+- Given `Zeg({ commands: cmd, middleware: [around('a'), around('b')] })`
+- When the test calls `await command(m)` with `m = new A(1)`
+- Then the Promise resolves to `undefined`
+- And `calls` is `['a>', 'b>', ['A', m], '<b', '<a']`
+
+#### REQ-142 A middleware function gets the message, next and info
+
+Source: D-29, D-83. Test: U.
+
+- Given a middleware function that records its arguments and returns `next()`
+- And `Zeg({ commands: [cmd], queries: qry, middleware: [spy] })`
+- When the test calls `await command(m1)` and `await query(m2)`
+- Then each call gives three arguments
+- And the first argument is `m1` or `m2` (the same object)
+- And the second argument is a function with the `length` 0
+- And the third argument is `{ kind: 'command', key: './A' }` or `{ kind: 'query', key: './Q' }`
+
+#### REQ-143 next() resolves to the result of a query and to undefined for a command
+
+Source: D-42, D-43, D-83. Test: U.
+
+- Given a command handler that returns `7`, the query pair `qry` and a middleware function that records the value of `next()` and returns `42`
+- When the test calls `await query(new Q(1))` and `await command(new A(1))`
+- Then each `next()` returns a Promise
+- And the values of `next()` are `{ tag: 'Q', v: 1 }` and `undefined`
+- And `query()` resolves to `42`, and `command()` resolves to `undefined`
+- **(spec detail)** Given a middleware function that returns `{ ...(await next()), extra: true }`
+- When the test calls `await query(new Q(1))`
+- Then the Promise resolves to `{ tag: 'Q', v: 1, extra: true }`
+
+#### REQ-144 A middleware function can stop a dispatch
+
+Source: D-41, D-44, D-49, D-83. Test: U.
+
+- Given a middleware function that returns `'short'` without a call to `next()`
+- When the test calls `await query(new Q(1))` and `await command(new A(1))`
+- Then `query()` resolves to `'short'`, `command()` resolves to `undefined`, and no handler runs
+- Given a middleware function that throws the value `e` synchronously
+- When the test calls `command(new A(1))`
+- Then the call returns a Promise, the Promise rejects with `e`, and `AH` does not handle the message
+- Given a middleware function that returns `undefined` without a call to `next()`
+- When the test calls `query(new Q(1))`
+- Then the Promise rejects with `UNDEFINED_RESULT` and the error text `query(): the handler or a middleware of ./Q returned undefined. Return null for no value`
+
+#### REQ-145 A second call to next() rejects with NEXT_CALLED_TWICE
+
+Source: D-53, D-83. Test: U.
+
+- Given one middleware function that calls `await next()` and then returns `next()`
+- And `Zeg({ commands: cmd, middleware: [twice] })`
+- When the test calls `command(m)`
+- Then the Promise rejects with `NEXT_CALLED_TWICE` and the error text `command(): a middleware of ./A called next() two times`
+- And `AH` handles the message one time
+- **(spec detail)** Given the same function as the first of two middleware functions for a query
+- Then the second call to `next()` also rejects with `NEXT_CALLED_TWICE`, and the inner function and the handler run one time
+
+#### REQ-146 A value that the handler throws reaches the middleware functions unchanged
+
+Source: D-49. Test: U.
+
+- Given a command handler that throws a value `e` that is not an `Error`
+- And a middleware function that catches the error of `await next()`, records it and throws it again
+- When the test calls `command(new A(1))`
+- Then the Promise rejects with `e`
+- And the middleware function recorded `e` (the same value) one time
+
+#### REQ-147 The middleware functions do not run if the dispatch fails before S5
+
+Source: D-82. Test: U.
+
+- Given a middleware function that pushes to `calls`
+- And `Zeg({ commands: cmd, queries: qry, middleware: [spy] })`
+- When the test calls `command({})`, `command(new Q(1))` and `query(new B(1))`
+- Then the Promises reject with a `TypeError`, `HANDLER_NOT_FOUND` and `HANDLER_NOT_FOUND`
+- And `calls` is empty
+- **(spec detail)** Before the first call to `Zeg()`, no list of middleware functions exists. The Promise rejects with `NOT_CONFIGURED` before S5 (REQ-053).
+
+#### REQ-148 Zeg() copies and replaces the middleware functions
+
+Source: D-35, D-39, D-81, D-82. Test: U.
+
+- Given `const list = [around('a')]` and `Zeg({ commands: cmd, middleware: list })`
+- When the test pushes `around('b')` to `list`, sets `list[0]` to `around('c')` and calls `await command(m)`
+- Then `calls` is `['a>', ['A', m], '<a']`
+- **(spec detail)** Given `Zeg({ commands: cmd, middleware: [around('a')] })` and then two calls to `Zeg()` that throw `INVALID_CONFIG`
+- When the test calls `await command(m)`
+- Then `around('a')` runs
+- And after `Zeg({ commands: cmd })`, no middleware function runs
+- **(spec detail)** Given a dispatch whose first middleware function waits for a gate, and a call to `Zeg()` with other middleware functions during the wait
+- When the test opens the gate
+- Then the dispatch runs the second middleware function of its start, not the new functions
+
+#### REQ-149 handle() starts during the call with middleware functions
+
+Source: D-41, D-82, D-83. Test: U.
+
+- Given two middleware functions that call `next()` before their first `await`
+- When the test calls `command(m)` without `await` and reads `calls` on the next line
+- Then `calls` contains the message
+- **(spec detail)** Given a middleware function that pushes `` `${kind} ${key}` `` to a log, and a handler of `B` that calls `await query(new Q(1))`
+- When the test calls `await command(new B(1))`
+- Then the log is `['command ./B', 'query ./Q']`
 
 ## 5. Spec details for approval
 
@@ -1194,9 +1327,9 @@ These rules come from this spec, not from a decision. When the user approves pha
 7. The error text of `INVALID_CONFIG` names the unknown property, the option, the position in the array and the file path. For Z6, it names both file paths (REQ-056).
 8. `Zeg()` copies the entries of the glob outputs. Later changes to these objects have no effect (REQ-054).
 9. S2 comes before S3. For an invalid message, the Promise rejects with a `TypeError` also before the first call to `Zeg()` (REQ-062).
-10. `handle()` starts during the call to `command()` or `query()` (REQ-083).
+10. `handle()` starts during the call to `command()` or `query()`, if each middleware function calls `next()` before its first `await` (REQ-083, REQ-149).
 11. S4 uses the registry that is active at the time of the call (REQ-050).
-12. In S2 to S6, Zeg reads no property of the message. It reads `Object.getPrototypeOf(message)` one time (REQ-064).
+12. In S2 to S7, Zeg reads no property of the message. It reads `Object.getPrototypeOf(message)` one time (REQ-064).
 13. No error text of Zeg contains a class name (REQ-071).
 14. If user code throws a value during a dispatch, the Promise rejects with that same value. This is also true for a value that is not an `Error` (REQ-064, REQ-101).
 15. Zeg calls `instance.handle`. An own property `handle` of the instance has priority over the prototype method (REQ-089).
@@ -1211,6 +1344,8 @@ These rules come from this spec, not from a decision. When the user approves pha
 24. The coverage report must contain `src/zeg.js` with more than 0 statements (REQ-131).
 25. The error text of the `TypeError` for an invalid message starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-061).
 26. The error texts of common mistakes name the fix (REQ-058).
+27. A hole in the array of the option `middleware` reads as `undefined`, so `Zeg()` throws `INVALID_CONFIG` for it (REQ-140).
+28. The error text of `UNDEFINED_RESULT` names the handler and the middleware functions, because a middleware function can also return `undefined` (REQ-144).
 
 ## 6. Decisions and requirements
 
@@ -1242,26 +1377,26 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-25, D-26 | Documentation only. These rules describe user code and module loading. Section 2 states what `Zeg()` does if a read throws. |
 | D-27 | REQ-061, REQ-063 |
 | D-28 | REQ-072 |
-| D-29 | REQ-082, REQ-084, REQ-085 |
+| D-29 | REQ-082, REQ-084, REQ-085, REQ-142 |
 | D-30 to D-34 | Removed in revision 3 of `docs/decisions.md` |
-| D-35 | REQ-013, REQ-050, REQ-054 |
+| D-35 | REQ-013, REQ-050, REQ-054, REQ-140, REQ-148 |
 | D-36 | REQ-051 |
-| D-37 | REQ-011, REQ-012, REQ-014 to REQ-017, REQ-019, REQ-021 to REQ-024, REQ-027 to REQ-030, REQ-032, REQ-033, REQ-040 to REQ-043, REQ-057 |
+| D-37 | REQ-011, REQ-012, REQ-014 to REQ-017, REQ-019, REQ-021 to REQ-024, REQ-027 to REQ-030, REQ-032, REQ-033, REQ-040 to REQ-043, REQ-057, REQ-140 |
 | D-38 | REQ-122 |
-| D-39 | REQ-052, REQ-055, REQ-057 |
+| D-39 | REQ-052, REQ-055, REQ-057, REQ-148 |
 | D-40 | REQ-044 |
-| D-41 | REQ-060, REQ-083 |
-| D-42 | REQ-090, REQ-091, REQ-094 |
-| D-43 | REQ-092, REQ-094 |
-| D-44 | REQ-093 |
+| D-41 | REQ-060, REQ-083, REQ-144, REQ-149 |
+| D-42 | REQ-090, REQ-091, REQ-094, REQ-143 |
+| D-43 | REQ-092, REQ-094, REQ-143 |
+| D-44 | REQ-093, REQ-144 |
 | D-45 | REQ-061, REQ-062 |
 | D-46 | REQ-053, REQ-062 |
 | D-47 | REQ-063, REQ-071, REQ-073 |
 | D-48 | REQ-073, REQ-074 |
-| D-49 | REQ-085, REQ-100 to REQ-103 |
+| D-49 | REQ-085, REQ-100 to REQ-103, REQ-144, REQ-146 |
 | D-50, D-51 | REQ-110, REQ-111 |
 | D-52 | REQ-112 |
-| D-53 | REQ-113 |
+| D-53 | REQ-113, REQ-145 |
 | D-54 | REQ-056, REQ-058 |
 | D-55, D-56 | REQ-003 |
 | D-57 | REQ-003, REQ-137, REQ-138 |
@@ -1282,3 +1417,6 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-78 | REQ-017, REQ-028, REQ-029, REQ-035, REQ-036 |
 | D-79 | REQ-003, REQ-007 |
 | D-80 | REQ-001, REQ-113, REQ-135 |
+| D-81 | REQ-140, REQ-141, REQ-148 |
+| D-82 | REQ-147, REQ-148, REQ-149 |
+| D-83 | REQ-142 to REQ-146, REQ-149 |

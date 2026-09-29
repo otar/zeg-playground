@@ -1,12 +1,16 @@
 // Zeg: a small CQRS library for Cloudflare Workers.
-// The rules are in docs/spec.md. Z1 to Z8 and S1 to S8 refer to its sections 2 and 3.
+// The rules are in docs/spec.md. Z1 to Z8 and S1 to S9 refer to its sections 2 and 3.
 
-const CALLS = { commands: 'command()', queries: 'query()' };
-const KINDS = Object.keys(CALLS);
+// The kinds, each with the name of its dispatch function
+const NAMES = { commands: 'command', queries: 'query' };
+const KINDS = Object.keys(NAMES);
+const OPTIONS = [...KINDS, 'middleware'];
 
 // The registry: a Map from the prototype of a message class to its pair, for both kinds.
 // It is null until the first call to Zeg() returns.
 let registry = null;
+// The middleware functions. Z7 sets them together with the registry.
+let middleware;
 
 /**
  * The result of `import.meta.glob(patterns, { eager: true })`. Each property name is a file path,
@@ -16,11 +20,35 @@ let registry = null;
  */
 
 /**
+ * The kind and the key of a message, for a middleware function.
+ *
+ * @typedef {object} DispatchInfo
+ * @property {'command' | 'query'} kind `'command'` for `command()`, `'query'` for `query()`.
+ * @property {string} key The file path of the message file without the extension, for example
+ *   `'./commands/RegisterUser'`.
+ */
+
+/**
+ * A function that runs around the handler of each dispatch. It can do work before and after
+ * `next()`, change the result of a query, or stop the dispatch with an error. If it returns without
+ * a call to `next()`, the handler does not run.
+ *
+ * @callback Middleware
+ * @param {object} message The message, as the caller gave it.
+ * @param {() => Promise<unknown>} next Runs the next middleware function, or the handler after the
+ *   last function. It takes no arguments. For a query, it resolves to the result. For a command, it
+ *   resolves to `undefined`. A second call rejects with a `ZegError` with the code
+ *   `NEXT_CALLED_TWICE`.
+ * @param {DispatchInfo} info The kind and the key of the message.
+ * @returns {unknown} For a query, the result of the dispatch.
+ */
+
+/**
  * The error class of Zeg. Use the class and the `code` to identify an error. The error text can
  * change in any version.
  *
- * Zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and
- * `UNDEFINED_RESULT`.
+ * Zeg uses the codes `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND`, `UNDEFINED_RESULT`
+ * and `NEXT_CALLED_TWICE`.
  *
  * @example
  * try {
@@ -67,9 +95,12 @@ const fail = (text) => {
  * `Zeg()` checks all options before it changes the pairs. If `Zeg()` throws, the pairs of the
  * previous call stay active.
  *
- * @param {object} options The glob outputs of the command files and the query files.
+ * @param {object} options The glob outputs of the command files and the query files, and the
+ *   middleware functions.
  * @param {GlobOutput | GlobOutput[]} [options.commands] The command files.
  * @param {GlobOutput | GlobOutput[]} [options.queries] The query files.
+ * @param {Middleware[]} [options.middleware] The middleware functions of each dispatch. The first
+ *   function is the outermost. `Zeg()` copies the array.
  * @returns {undefined}
  * @throws {ZegError} With the code `INVALID_CONFIG` if the options, the files, the pairs or the
  *   classes are not valid. If user code throws a value while `Zeg()` reads the options, `Zeg()`
@@ -78,6 +109,7 @@ const fail = (text) => {
  * Zeg({
  *   commands: import.meta.glob('./commands/*.js', { eager: true }),
  *   queries: import.meta.glob('./queries/*.js', { eager: true }),
+ *   middleware: [logDispatch],
  * });
  */
 export function Zeg(options) {
@@ -90,8 +122,8 @@ export function Zeg(options) {
   for (const key of Reflect.ownKeys(options)) {
     // A symbol becomes a text such as 'Symbol(commands)', which is not a kind.
     const name = String(key);
-    if (!KINDS.includes(name)) {
-      fail(`unknown option ${name}. The options are commands and queries`);
+    if (!OPTIONS.includes(name)) {
+      fail(`unknown option ${name}. The options are commands, queries, middleware`);
     }
   }
 
@@ -114,6 +146,21 @@ export function Zeg(options) {
     } else if (value !== undefined) {
       fail(`${kind} must be a glob output or an array of glob outputs`);
     }
+  }
+
+  // Z3: the middleware functions. The copy ignores a later change of the array.
+  const functions = [];
+  const value = Object.hasOwn(options, 'middleware') ? options.middleware : undefined;
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const fn = Object.hasOwn(value, i) ? value[i] : undefined;
+      if (typeof fn !== 'function') {
+        fail(`middleware[${i}] must be a function`);
+      }
+      functions.push(fn);
+    }
+  } else if (value !== undefined) {
+    fail('middleware must be an array of functions');
   }
 
   // Z4: check each file and read its class one time
@@ -204,10 +251,11 @@ export function Zeg(options) {
 
   // Z7
   registry = next;
+  middleware = functions;
 }
 
 async function dispatch(kind, message) {
-  const call = CALLS[kind];
+  const call = `${NAMES[kind]}()`;
 
   // S2
   let proto;
@@ -233,22 +281,40 @@ async function dispatch(kind, message) {
     throw new ZegError(
       'HANDLER_NOT_FOUND',
       pair
-        ? `${call}: the message file ${pair.key} is in ${pair.label}. Use ${CALLS[pair.kind]}`
+        ? `${call}: the message file ${pair.key} is in ${pair.label}. Use ${NAMES[pair.kind]}()`
         : `${call}: the class of the message is not the default export of a message file in ${kind}`,
     );
   }
 
-  // S5 to S7
-  const value = await new pair.Handler().handle(message);
+  // S5: a running dispatch keeps the middleware functions of its start.
+  const chain = middleware;
+  const info = { kind: NAMES[kind], key: pair.key };
+  let last = -1;
+  const step = async (i) => {
+    if (i <= last) {
+      throw new ZegError(
+        'NEXT_CALLED_TWICE',
+        `${call}: a middleware of ${pair.key} called next() two times`,
+      );
+    }
+    last = i;
+    if (i < chain.length) {
+      return chain[i](message, () => step(i + 1), info);
+    }
+    // S6 to S8
+    const value = await new pair.Handler().handle(message);
+    return kind === 'queries' ? value : undefined;
+  };
+  const value = await step(0);
 
-  // S8
+  // S9
   if (kind === 'commands') {
     return undefined;
   }
   if (value === undefined) {
     throw new ZegError(
       'UNDEFINED_RESULT',
-      `query(): the handler of ${pair.key} returned undefined. Return null for no value`,
+      `query(): the handler or a middleware of ${pair.key} returned undefined. Return null for no value`,
     );
   }
   return value;

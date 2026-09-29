@@ -1,6 +1,6 @@
 # Zeg
 
-[![test](https://github.com/otar/zeg-playground/actions/workflows/test.yml/badge.svg)](https://github.com/otar/zeg-playground/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![gzip: < 1.5 KB](https://img.shields.io/badge/gzip-%3C%201.5%20KB-blue)
+[![test](https://github.com/otar/zeg-playground/actions/workflows/test.yml/badge.svg)](https://github.com/otar/zeg-playground/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![gzip: < 2 KB](https://img.shields.io/badge/gzip-%3C%202%20KB-blue)
 
 Simple, opinionated CQRS for Cloudflare Workers. Zeg is one JavaScript file with 4 exports and no dependencies.
 
@@ -97,7 +97,7 @@ npm install @otar/zeg
 - **Classes, not names.** Zeg finds the handler through the class of the message. The classes can be anonymous.
 - **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value from the handler, or rejects if that value is `undefined`.
 - **Errors at startup.** Zeg checks all pairs when the Worker starts. A failed check stops the Worker before the first request.
-- **No build step.** The package contains the source file `src/zeg.js`, not a built file. It also contains the type declarations in `src/zeg.d.ts`. After esbuild minifies `src/zeg.js` and gzip compresses it, its size is less than 1.5 KB.
+- **No build step.** The package contains the source file `src/zeg.js`, not a built file. It also contains the type declarations in `src/zeg.d.ts`. After esbuild minifies `src/zeg.js` and gzip compresses it, its size is less than 2 KB.
 
 ## Requirements
 

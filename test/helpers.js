@@ -3,7 +3,13 @@ import { expect } from 'vitest';
 import { ZegError, Zeg } from '@otar/zeg';
 import { A, calls } from './spec-fixtures.js';
 
-export const CODES = ['INVALID_CONFIG', 'NOT_CONFIGURED', 'HANDLER_NOT_FOUND', 'UNDEFINED_RESULT'];
+export const CODES = [
+  'INVALID_CONFIG',
+  'NOT_CONFIGURED',
+  'HANDLER_NOT_FOUND',
+  'UNDEFINED_RESULT',
+  'NEXT_CALLED_TWICE',
+];
 
 // Each ZegError that Zeg creates in the tests of one test file (REQ-113). Each test file has its own module state,
 // and as a result its own copy of this list.

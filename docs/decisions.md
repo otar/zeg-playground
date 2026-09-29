@@ -11,6 +11,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **Message:** an object that the caller gives to `command()` or `query()`, for example `new RegisterUser(email)`.
 - **Kind:** command or query.
 - **Dispatch:** one call to `command()` or `query()`.
+- **Middleware function:** a function that runs around the handler of each dispatch. It gets the message, `next` and `info` (D-81, D-83).
 - **Glob output:** the object that `import.meta.glob` returns. Each property name is a file path, and each property value is the module of that file.
 - **Handler file:** a file in a glob output whose name ends in `Handler.js` or `Handler.ts`, for example `RegisterUserHandler.js`.
 - **Message file:** a file in a glob output whose name does not end in `Handler.js` or `Handler.ts`, for example `RegisterUser.js`.
@@ -24,8 +25,8 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Scope
 
-- **D-01** Version 1 contains only `Zeg()`, `command()`, `query()` and `ZegError`. It has no middleware, no events and no Cloudflare Queues support.
-- **D-02** The package exports exactly four names: `Zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type name `GlobOutput` (D-76). TypeScript can import this type name, for example `import('@otar/zeg').GlobOutput`. It is not a value, so the module has no fifth export at runtime.
+- **D-01** Version 1 contains only `Zeg()`, `command()`, `query()`, `ZegError` and the middleware functions of D-81. It has no events and no Cloudflare Queues support. **(detail)** For a side effect after a command, the command handler dispatches another command (D-23). For this reason, revision 9 did not add events.
+- **D-02** The package exports exactly four names: `Zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type names `GlobOutput`, `Middleware` and `DispatchInfo` (D-76). TypeScript can import these type names, for example `import('@otar/zeg').GlobOutput`. They are not values, so the module has no fifth export at runtime.
 - **D-03** The library code imports no modules. It uses only standard JavaScript. **(detail)** As a result, it imports no `node:*` module and no `cloudflare:*` module.
 
 ## API model
@@ -60,7 +61,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-19** `Zeg()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
 - **D-20** **(detail)** `Zeg()` checks each message class. The class must be a function whose `prototype` is an object.
 - **D-21** The library creates a new handler instance for each dispatch, with `new HandlerClass()` and no arguments.
-- **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message.
+- **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message. **(detail)** A middleware function also gets no context. It gets only the message, `next` and `info` (D-83).
 - **D-23** A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'`.
 - **D-24** The library has no guard against recursive dispatch.
 - **D-25** **(detail)** A message file or a handler file must not import the Worker entry file. Such an import cycle can cause `undefined` values and no error.
@@ -73,17 +74,18 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## The message object
 
-- **D-29** The library gives the message to the handler as it is. It does not freeze, copy or change the message. If a message must not change, its message class can freeze the message in the constructor, for example with `Object.freeze(this)`.
+- **D-29** The library gives the message to the middleware functions and to the handler as it is. It does not freeze, copy or change the message. If a message must not change, its message class can freeze the message in the constructor, for example with `Object.freeze(this)`.
 - **D-30 to D-34** Revision 3 removed these decisions. They described the deep freeze.
 
 ## Zeg()
 
-- **D-35** Each call to `Zeg()` replaces all handlers. The options `commands` and `queries` are both optional. **(detail)** An option with the value `undefined` is the same as a missing option.
+- **D-35** Each call to `Zeg()` replaces all handlers and all middleware functions. The options `commands`, `queries` and `middleware` are all optional. **(detail)** An option with the value `undefined` is the same as a missing option.
 - **D-36** `Zeg({})` is valid. It creates an empty registry.
 - **D-37** `Zeg()` throws a `ZegError` with the code `INVALID_CONFIG` in these cases:
   - **(detail)** The argument is not a plain object.
-  - The argument has a property other than `commands` and `queries`.
+  - The argument has a property other than `commands`, `queries` and `middleware`.
   - **(detail)** The value of `commands` or `queries` is not a plain object and not an array. An entry of such an array is not a plain object.
+  - **(detail)** The value of `middleware` is not an array, or an entry of the array is not a function (D-81). A hole in the array is not a function.
   - **(detail)** A value in a glob output is not an object. For example, a lazy glob supplies functions, which are not valid.
   - **(detail)** A glob output has no files.
   - **(detail)** A file path in a glob output does not end in `.js` or `.ts`, or it ends in `.d.ts` (D-78).
@@ -93,27 +95,27 @@ To change a decision, change this file first. Then update the documents that ref
   - A message class does not pass the check in D-20, or a handler class does not pass the check in D-19.
   - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `Zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
 - **D-38** `Zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
-- **D-39** `Zeg()` checks all options before it changes the registry. If `Zeg()` throws, the registry does not change, and the handlers from the previous call stay active.
+- **D-39** `Zeg()` checks all options before it changes the registry and the middleware functions. If `Zeg()` throws, the registry and the middleware functions do not change, and the handlers and the middleware functions from the previous call stay active.
 - **D-40** **(detail)** Two handler files can have the same handler class as their default export.
 
 ## Dispatch
 
-- **D-41** `command()` and `query()` always return a Promise. **(detail)** They never throw synchronously.
-- **D-42** `command()` resolves to `undefined`. The library ignores the return value of a command handler. It does not throw an error and does not write a warning.
-- **D-43** `query()` resolves to the value that the handler returns, after `await`. `null` is a valid value.
-- **D-44** If the value from a query handler is `undefined` after `await`, the Promise rejects with the code `UNDEFINED_RESULT`.
+- **D-41** `command()` and `query()` always return a Promise. **(detail)** They never throw synchronously, also if a middleware function throws synchronously.
+- **D-42** `command()` resolves to `undefined`. The library ignores the return value of a command handler and of the middleware functions of a command. It does not throw an error and does not write a warning.
+- **D-43** `query()` resolves to the value that the handler returns, after `await`. `null` is a valid value. **(detail)** With middleware functions, `query()` resolves to the value of the first middleware function, after `await` (D-83).
+- **D-44** If the value from a query handler is `undefined` after `await`, the Promise rejects with the code `UNDEFINED_RESULT`. **(detail)** The check runs after the middleware functions. As a result, it also applies if a middleware function returns `undefined`.
 - **D-45** If the message is not valid (D-27), the Promise rejects with a `TypeError`.
 - **D-46** Until a call to `Zeg()` returns without an error, the Promise rejects with the code `NOT_CONFIGURED`.
 - **D-47** If the class of the message is not a message class of the correct kind, the Promise rejects with the code `HANDLER_NOT_FOUND`. This includes a class that no glob found and a message of the other kind.
 - **D-48** If the message is a message of the other kind, the error text tells the caller to use the other function. **(detail)** The error text names the message file by its key. If the option is an array, the error text also names the position of the glob output in the array, for example `commands[1]`.
-- **D-49** If `new HandlerClass()` or `handle()` throws, or if the Promise of `handle()` rejects, the Promise of the dispatch rejects with the same error object. The library does not wrap or change this error.
+- **D-49** If `new HandlerClass()` or `handle()` throws, or if the Promise of `handle()` rejects, the Promise of the dispatch rejects with the same error object. The library does not wrap or change this error. **(detail)** This rule also applies to a middleware function that throws or whose Promise rejects. Each middleware function outside it gets the same error object from `next()`.
 
 ## Errors
 
 - **D-50** The library uses one error class, `ZegError`. **(detail)** It extends `Error`.
 - **D-51** The constructor is public: `new ZegError(code, message)`. It sets `code` and `message`. It does not check the code. The `name` property is always `'ZegError'`.
 - **D-52** A `ZegError` has the properties `name`, `code` and `message`. Zeg adds no other properties. **(detail)** The `stack` property that the JavaScript engine adds is not part of this rule.
-- **D-53** The codes are `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND` and `UNDEFINED_RESULT`.
+- **D-53** The codes are `INVALID_CONFIG`, `NOT_CONFIGURED`, `HANDLER_NOT_FOUND`, `UNDEFINED_RESULT` and `NEXT_CALLED_TWICE`.
 - **D-54** The class and the code are the API. The error text can change in any version.
 
 ## Package
@@ -140,7 +142,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-68** The unit tests run with Vitest 4.1 and `@cloudflare/vitest-plugin`, in workerd. **(detail)** The build tests and the static checks run in Node, because they start processes and read files.
 - **D-69** A production build test runs `vite build` on `examples/basic-worker/`. It then sends HTTP requests to the built Worker in local workerd.
 - **D-70** Istanbul measures the coverage of `src/zeg.js`. Lines, branches, functions and statements must all have 100% coverage.
-- **D-71** The size of `src/zeg.js` after `esbuild --minify --format=esm` and `gzip -9` must be 1536 bytes or less.
+- **D-71** The size of `src/zeg.js` after `esbuild --minify --format=esm` and `gzip -9` must be 2048 bytes or less. **(detail)** Revision 9 changed the limit from 1536 bytes to 2048 bytes for the middleware (D-81).
 - **D-72** A GitHub Actions workflow runs all tests and checks, except the mutation tests (D-75), on each push to `main`, with Node 22.
 
 ## Tooling (revision 5)
@@ -153,7 +155,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Docblocks (revision 6)
 
-- **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc type `GlobOutput`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. A static check makes sure that each export has a docblock.
+- **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc types `GlobOutput`, `Middleware` and `DispatchInfo`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. A static check makes sure that each export has a docblock.
   - **(detail)** esbuild removes the docblocks in a minified build, so they do not change the size of D-71. For this reason, no comment in `src/zeg.js` contains `@license`, `@preserve`, `/*!` or `//!`, because esbuild keeps such comments.
   - **(detail)** The example of a docblock does not contain `*/`, because `*/` ends the comment. For example, the glob pattern `./commands/**/*.js` contains `*/`.
 - **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code. **(detail)** A second static check runs `tsc` in strict mode for `test/types/consumer.ts`, a small TypeScript project that imports `@otar/zeg`. The check fails if the project does not get the types of `src/zeg.d.ts`, for example with the error TS7016.
@@ -171,6 +173,20 @@ To change a decision, change this file first. Then update the documents that ref
 ## Names (revision 9)
 
 - **D-80** The setup function is `Zeg()`, with a capital Z. It is a function, and a project calls it without `new`. The error texts of `Zeg()` start with `Zeg(): `. The documents write the name of the library as "Zeg". **(detail)** The npm package `@otar/zeg`, the file `src/zeg.js` and the class `ZegError` keep their names.
+
+## Middleware (revision 9)
+
+- **D-81** The option `middleware` of `Zeg()` is an array of middleware functions. The first function is the outermost. For example, `middleware: [a, b]` runs the start of `a`, the start of `b`, the handler, the end of `b` and the end of `a`. `Zeg()` copies the array, so a later change of the array has no effect.
+  - **(detail)** A single function without an array is not valid. The order of the functions must be visible in the Worker entry file.
+  - **(detail)** A project keeps its middleware files outside the folders of the globs, because each file that a glob finds must be part of a pair (D-10).
+- **D-82** The middleware functions run one time for each dispatch, after S4 finds the pair. As a result, a `TypeError`, `NOT_CONFIGURED` and `HANDLER_NOT_FOUND` reject before a middleware function runs. A dispatch uses the middleware functions that are active when it starts. A nested dispatch runs the middleware functions again.
+  - **(detail)** The library creates the handler instance after the last middleware function calls `next()`. As a result, a middleware function also gets an error from the handler constructor.
+- **D-83** A middleware function gets three arguments: the message, `next` and `info`. It can be sync or async.
+  - `info` is an object with two properties. `kind` is `'command'` or `'query'`. `key` is the key of the message, for example `'./commands/RegisterUser'`.
+  - `next()` takes no arguments and returns a Promise. For a query, it resolves to the value of the next middleware function or of the handler. For a command, it resolves to `undefined`.
+  - A middleware function can change the result of a query. It can stop a dispatch: it throws, or it returns without a call to `next()`.
+  - If a middleware function calls `next()` a second time, that call rejects with a `ZegError` with the code `NEXT_CALLED_TWICE`. As a result, a handler runs at most one time for each dispatch.
+  - **(detail)** `handle()` starts during the call to `command()` or `query()` only if each middleware function calls `next()` before its first `await`.
 
 ## Background facts
 
@@ -247,3 +263,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - Background fact 21 has the numbers of the mutation run of revision 8.
 - **Revision 9** (after revision 8): the user asked for middleware and for the name `Zeg()`.
   - The setup function `zeg()` became `Zeg()`, and its error texts start with `Zeg(): `. The documents write the name of the library as "Zeg". Revision 9 added D-80. The spec changed each `zeg()` to `Zeg()`, and it changed spec detail 20 and section 6. The History entries of earlier revisions keep the old name.
+  - `Zeg()` has the option `middleware`, an array of middleware functions. They run around the handler of each dispatch. A second call to `next()` rejects with the new code `NEXT_CALLED_TWICE`. Revision 9 did not add events, because a command handler can dispatch another command. Revision 9 added the term Middleware function and D-81 to D-83. It changed D-01, D-02, D-22, D-29, D-35, D-37, D-39, D-41 to D-44, D-49, D-53, D-71 (the size limit is now 2048 bytes) and D-76. The spec added section 4.14 with REQ-140 to REQ-149. It changed section 2, section 3 (the new step S5 and the numbers S6 to S9), REQ-058, REQ-083, REQ-113, REQ-132, section 5 and section 6.

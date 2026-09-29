@@ -193,7 +193,7 @@ describe('4.5 Zeg(): state and errors', () => {
       handle = () => {};
     };
     const cases = [
-      [{ extra: 1 }, 'The options are commands and queries'],
+      [{ extra: 1 }, 'The options are commands, queries, middleware'],
       [{ commands: {} }, 'Check the glob pattern'],
       [{ commands: { ...cmd, './B.js': () => {} } }, '{ eager: true }'],
       [{ commands: { ...cmd, './B.js': B } }, 'without the import option'],
