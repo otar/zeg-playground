@@ -81,7 +81,7 @@ describe('4.13 non-functional checks', () => {
       expect(await eslint.isPathIgnored(join(ROOT, file)), file).toBe(false);
     }
     const formatted = files.filter(
-      (f) => /\.(js|mjs|json|jsonc|yml|yaml|md)$/.test(f) && !f.endsWith('package-lock.json'),
+      (f) => /\.(js|mjs|ts|json|jsonc|yml|yaml|md)$/.test(f) && !f.endsWith('package-lock.json'),
     );
     for (const file of formatted) {
       const info = await prettier.getFileInfo(join(ROOT, file), {

@@ -1,0 +1,14 @@
+{
+  // The strict consumer check of src/zeg.d.ts (REQ-138). test/node/static.test.js runs tsc with this file.
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022"],
+    "types": [],
+    "skipLibCheck": false
+  },
+  "files": ["consumer.ts"]
+}

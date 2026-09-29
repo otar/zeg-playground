@@ -1,13 +1,25 @@
 // Static checks (type S) of docs/spec.md. They read, list or bundle files, and they do not run the library.
 // They run in Node (section 1.5, rule 7).
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
+import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(import.meta.dirname, '../..');
+const TSC = join(ROOT, 'node_modules/typescript/bin/tsc');
+
+// Runs TypeScript 7 in the repository root. Returns its exit code and its output.
+function tsc(...args) {
+  const { status, stdout, stderr } = spawnSync(process.execPath, [TSC, ...args], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  return { status, stdout, stderr };
+}
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const readJson = (path) => JSON.parse(read(path));
 const gitFiles = (...patterns) =>
@@ -75,7 +87,7 @@ describe('4.1 package', () => {
     for (const script of ['build', 'prepare', 'prepublishOnly']) {
       expect(pkg.scripts ?? {}).not.toHaveProperty(script);
     }
-    expect(gitFiles('*.d.ts')).toEqual([]);
+    expect(gitFiles('*.d.ts')).toEqual(['src/zeg.d.ts']);
   });
 
   it('REQ-004 the license is MIT', () => {
@@ -226,12 +238,34 @@ describe('4.13 docblocks and the type check', () => {
     const config = readJsonc('jsconfig.json');
     expect(config.files).toEqual(['src/zeg.js']);
     expect(config.compilerOptions).toMatchObject({ checkJs: true, noEmit: true, strict: false });
-    const tsc = join(ROOT, 'node_modules/typescript/bin/tsc');
-    const { status, stdout, stderr } = spawnSync(process.execPath, [tsc, '-p', 'jsconfig.json'], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    });
-    expect({ status, stdout, stderr }).toEqual({ status: 0, stdout: '', stderr: '' });
+    expect(tsc('-p', 'jsconfig.json')).toEqual({ status: 0, stdout: '', stderr: '' });
+  }, 60_000);
+
+  it('REQ-137 src/zeg.d.ts is the output of tsc for the docblocks of src/zeg.js', async () => {
+    const args = ['-p', 'jsconfig.json', '--noEmit', 'false', '--declaration'];
+    args.push('--emitDeclarationOnly', '--rootDir', 'src', '--outDir');
+    const { scripts } = readJson('package.json');
+    expect(scripts.types).toBe(`tsc ${args.join(' ')} src && prettier --write src/zeg.d.ts`);
+    const out = mkdtempSync(join(tmpdir(), 'zeg-types-'));
+    try {
+      expect(tsc(...args, out)).toEqual({ status: 0, stdout: '', stderr: '' });
+      const file = join(ROOT, 'src/zeg.d.ts');
+      const options = await prettier.resolveConfig(file);
+      const text = readFileSync(join(out, 'zeg.d.ts'), 'utf8');
+      expect(await prettier.format(text, { ...options, filepath: file })).toBe(
+        read('src/zeg.d.ts'),
+      );
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('REQ-138 a strict TypeScript project can import zeg with the types of src/zeg.d.ts', () => {
+    const { compilerOptions } = readJsonc('test/types/tsconfig.json');
+    expect(compilerOptions).toMatchObject({ strict: true, noEmit: true, skipLibCheck: false });
+    // With allowJs, TypeScript can read src/zeg.js in place of the missing .d.ts file.
+    expect(compilerOptions).not.toHaveProperty('allowJs');
+    expect(tsc('-p', 'test/types/tsconfig.json')).toEqual({ status: 0, stdout: '', stderr: '' });
   }, 60_000);
 });
 

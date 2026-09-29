@@ -380,6 +380,66 @@ If a handler file imports a message class, it uses a path relative to its own fo
 
 `zeg()` does the same checks as for one glob. For example, if `src/commands/Refund.js` has no handler file, `zeg()` throws `INVALID_CONFIG`. The error text contains the file paths relative to the base folder, for example `zeg(): commands ./Refund.js: no handler file ./RefundHandler.js`. The file paths in the error text do not contain the base folder `./commands`.
 
+### 3.10 TypeScript
+
+Message files and handler files can be `.ts` files. Vite transforms them [D-78]. A pair uses one extension: `RegisterUser.ts` goes with `RegisterUserHandler.ts`. The package contains type declarations in `src/zeg.d.ts` [D-57].
+
+```ts
+// src/index.ts
+import { zeg, command, query } from '@otar/zeg';
+import RegisterUser from './commands/RegisterUser.ts';
+import GetUser from './queries/GetUser.ts';
+
+zeg({
+  commands: import.meta.glob('./commands/**/*.ts', { eager: true }),
+  queries: import.meta.glob('./queries/**/*.ts', { eager: true }),
+});
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { email } = (await request.json()) as { email: string };
+    await command(new RegisterUser(email));
+    return Response.json(await query<{ email: string } | null>(new GetUser(email)));
+  },
+};
+```
+
+```ts
+// src/queries/GetUserHandler.ts
+import { users } from '../store.ts';
+import type GetUser from './GetUser.ts';
+
+export default class {
+  handle(message: GetUser): { email: string } | null {
+    return users.get(message.email) ?? null;
+  }
+}
+```
+
+The lab used this `tsconfig.json` (background fact 24):
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "lib": ["es2022", "dom"],
+    "types": ["vite/client"],
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+```
+
+- `types: ["vite/client"]` gives the type of `import.meta.glob`.
+- TypeScript finds the types of zeg with the `moduleResolution` values `bundler`, `node16` and `nodenext`.
+- `query<T>()` sets the result type. zeg does not check this type at runtime.
+- A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders, or add `'!**/*.d.ts'` to the glob.
+
 ## 4. API
 
 The package `@otar/zeg` has four exports [D-02]:
@@ -736,4 +796,3 @@ it('returns null for an unknown user', async () => {
 - no fallback to the handler of a parent class [D-28]
 - no guard against recursive dispatch [D-24]
 - no freeze or copy of messages [D-29]
-- no type declarations [D-57]

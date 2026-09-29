@@ -183,7 +183,7 @@ Source: D-55, D-56, D-57. Test: S.
 - And it has no `private`, `peerDependencies`, `types` or `typings` field
 - And its `dependencies` field is missing or empty
 - And its `scripts` field has no `build`, `prepare` or `prepublishOnly` script
-- And `git ls-files '*.d.ts'` lists no file
+- And `git ls-files '*.d.ts'` lists only `src/zeg.d.ts`
 
 #### REQ-004 The license is MIT
 
@@ -1114,7 +1114,7 @@ Source: D-74. Test: S.
 - When a static check runs `eslint --max-warnings 0 .` and `prettier --check .`
 - Then both commands end with the exit code 0
 - And the scripts `lint` and `lint:fix` of `package.json` run these two tools
-- And ESLint and Prettier ignore no tracked JavaScript, JSON, YAML or Markdown file, except `package-lock.json`
+- And ESLint ignores no tracked JavaScript or Markdown file, and Prettier ignores no tracked JavaScript, TypeScript, JSON, YAML or Markdown file, except `package-lock.json`
 - And no comment in a file turns off the rule `curly`, and no Markdown file has an `eslint-skip` comment
 - And the only code block with the tag `jsx` in the Markdown files is the first code block of `README.md` [D-74]
 - Given the ESLint configuration
@@ -1143,6 +1143,24 @@ Source: D-77. Test: S.
 - Given `jsconfig.json` with only the file `src/zeg.js`, `checkJs` and `noEmit` on, and `strict` off
 - And `devDependencies` contains `typescript` with a version range that starts with `^7.`
 - When a static check runs `tsc -p jsconfig.json`
+- Then the command ends with the exit code 0 and writes no output
+
+#### REQ-137 src/zeg.d.ts is the output of tsc for the docblocks
+
+Source: D-57. Test: S.
+
+- Given the script `types` of `package.json`, which runs `tsc -p jsconfig.json` with `--declaration`, `--emitDeclarationOnly`, `--rootDir src` and `--outDir src`, and then Prettier on `src/zeg.d.ts`
+- When a static check runs the same `tsc` command with an empty temporary folder as `--outDir`, and formats the output with Prettier
+- Then the command ends with the exit code 0 and writes no output
+- And the formatted output is equal to the committed `src/zeg.d.ts`
+
+#### REQ-138 A strict TypeScript project can import zeg
+
+Source: D-57, D-77. Test: S.
+
+- Given `test/types/tsconfig.json` with `strict` and `noEmit` on, `skipLibCheck` off and no `allowJs`
+- And `test/types/consumer.ts`, which imports `@otar/zeg`, calls the four exports and contains `// @ts-expect-error` lines for `command('RegisterUser')`, `zeg({ handlers: queries })` and a property read on the result of `query()` without a type argument
+- When a static check runs `tsc -p test/types/tsconfig.json`
 - Then the command ends with the exit code 0 and writes no output
 
 ## 5. Spec details for approval
@@ -1227,7 +1245,8 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-52 | REQ-112 |
 | D-53 | REQ-113 |
 | D-54 | REQ-056, REQ-058 |
-| D-55, D-56, D-57 | REQ-003 |
+| D-55, D-56 | REQ-003 |
+| D-57 | REQ-003, REQ-137, REQ-138 |
 | D-58 | REQ-004 |
 | D-59 | REQ-005 |
 | D-60 | REQ-006 |
@@ -1241,5 +1260,5 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-74 | REQ-134 |
 | D-75 | REQ-133 |
 | D-76 | REQ-135 |
-| D-77 | REQ-136 |
+| D-77 | REQ-136, REQ-138 |
 | D-78 | REQ-017, REQ-028, REQ-035, REQ-036 |

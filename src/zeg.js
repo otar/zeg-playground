@@ -26,8 +26,9 @@ let registry = null;
  * try {
  *   await command(new RegisterUser('a@b.c'));
  * } catch (error) {
- *   if (error instanceof ZegError && error.code === 'HANDLER_NOT_FOUND') {
- *     return new Response('not supported', { status: 501 });
+ *   if (error instanceof ZegError) {
+ *     // A ZegError shows a bug in the project, for example a missing pair.
+ *     console.error(error.code, error.message);
  *   }
  *   throw error;
  * }

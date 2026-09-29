@@ -81,11 +81,12 @@ npm install @otar/zeg
 - **Classes, not names.** zeg finds the handler through the class of the message. The classes can be anonymous.
 - **Only queries return values.** `command()` resolves to `undefined`. `query()` resolves to the value from the handler, or rejects if that value is `undefined`.
 - **Errors at startup.** zeg checks all pairs when the Worker starts. A failed check stops the Worker before the first request.
-- **No build step.** The package contains the source file `src/zeg.js`, not a built file. After esbuild minifies this file and gzip compresses it, its size is less than 1.5 KB.
+- **No build step.** The package contains the source file `src/zeg.js`, not a built file, and its type declarations. After esbuild minifies this file and gzip compresses it, its size is less than 1.5 KB.
 
 ## Requirements
 
 - The project builds with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only, because Wrangler does not transform `import.meta.glob`.
+- Message files and handler files can be `.js` files or `.ts` files. For TypeScript, see section 3.10 of `docs/syntax.md`.
 - The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60.
 - zeg needs no other Vite settings and no compatibility flags.
 
@@ -112,12 +113,11 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 
 ### Types in the editor
 
-`src/zeg.js` has JSDoc docblocks for the four exports. An editor shows their descriptions and types. The package has no `.d.ts` file.
+The package contains type declarations in `src/zeg.d.ts`. TypeScript generates this file from the JSDoc docblocks of `src/zeg.js`. An editor shows the descriptions and the types of the four exports.
 
-- A TypeScript 7 editor shows the docblocks only if the project has a `jsconfig.json` or a `tsconfig.json`. An empty file (`{}`) is sufficient.
-- A strict TypeScript project gets the error `TS7016` for `@otar/zeg`, because the package has no type declarations.
+- A TypeScript project needs the `moduleResolution` value `bundler`, `node16` or `nodenext`.
 - In a JavaScript project with `checkJs`, the editor reports some incorrect calls as errors, for example `command('RegisterUser')`. zeg also does all its checks at runtime.
-- The result type of `query()` is `unknown`. To set a type in JavaScript, write `/** @type {User} */` before the variable.
+- The result type of `query()` is `unknown`. In TypeScript, write `query<User>(message)`. In JavaScript, write `/** @type {User} */` before the variable.
 
 ## Rules
 
@@ -172,6 +172,8 @@ Prettier sets the layout of the code. ESLint finds code that is hard to read or 
 
 - To check the style, run `npm run lint`.
 - To correct the style, run `npm run lint:fix`.
+
+If you change a docblock in `src/zeg.js`, run `npm run types`. This command writes `src/zeg.d.ts` again. A static check fails if `src/zeg.d.ts` is not up to date.
 
 To change the dependencies, use npm 11.6 or later, for example `npx npm@11 install`. npm 10 cannot resolve the dependencies without a lockfile (background fact 19 in `docs/decisions.md`).
 
