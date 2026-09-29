@@ -1,6 +1,6 @@
-// docs/spec.md section 4.5: REQ-050 to REQ-057. REQ-053 is in req-053.test.js.
+// docs/spec.md section 4.5: REQ-050 to REQ-058. REQ-053 is in req-053.test.js.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { zeg, command } from '@otar/zeg';
+import { zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, cmd, qry, calls, resetCalls } from './spec-fixtures.js';
 import {
   checkSeen,
@@ -8,6 +8,7 @@ import {
   expectRejects,
   expectThrows,
   pairOf,
+  returning,
   settle,
   thrownBy,
 } from './helpers.js';
@@ -187,7 +188,35 @@ describe('4.5 zeg(): state and errors', () => {
     expect(error.message).toContain('./X.js');
   });
 
+  it('REQ-058 the error texts of common mistakes name the fix', async () => {
+    const field = class {
+      handle = () => {};
+    };
+    const cases = [
+      [{ extra: 1 }, 'The options are commands and queries'],
+      [{ commands: {} }, 'Check the glob pattern'],
+      [{ commands: { ...cmd, './B.js': () => {} } }, '{ eager: true }'],
+      [{ commands: { ...cmd, './B.js': B } }, 'without the import option'],
+      [{ commands: pairOf(B, field, 'B') }, 'on its prototype'],
+    ];
+    for (const [options, hint] of cases) {
+      expect(expectThrows('INVALID_CONFIG', options).message).toContain(hint);
+    }
+    zeg({
+      commands: cmd,
+      queries: pairOf(
+        B,
+        returning(() => undefined),
+        'B',
+      ),
+    });
+    const notFound = await expectRejects('HANDLER_NOT_FOUND', command(new Map()));
+    expect(notFound.message).toContain('is not the default export of a message file in commands');
+    const noValue = await expectRejects('UNDEFINED_RESULT', query(new B(1)));
+    expect(noValue.message).toContain('Return null for no value');
+  });
+
   it('REQ-113 the ZegErrors of this file have known codes', () => {
-    checkSeen(['INVALID_CONFIG', 'HANDLER_NOT_FOUND']);
+    checkSeen(['INVALID_CONFIG', 'HANDLER_NOT_FOUND', 'UNDEFINED_RESULT']);
   });
 });

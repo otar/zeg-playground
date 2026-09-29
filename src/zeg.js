@@ -90,7 +90,7 @@ export function zeg(options) {
     // A symbol becomes a text such as 'Symbol(commands)', which is not a kind.
     const name = String(key);
     if (!KINDS.includes(name)) {
-      fail(`unknown option ${name}`);
+      fail(`unknown option ${name}. The options are commands and queries`);
     }
   }
 
@@ -131,7 +131,9 @@ export function zeg(options) {
       }
       const module = output[path];
       if (!isObject(module)) {
-        fail(`${where}: the module must be an object`);
+        fail(
+          `${where}: the module must be an object. Use import.meta.glob() with { eager: true } and without the import option`,
+        );
       }
       const cls = module.default;
       const isHandler = path.endsWith('Handler.js');
@@ -139,7 +141,7 @@ export function zeg(options) {
       if (isHandler) {
         if (!proto || typeof proto.handle !== 'function') {
           fail(
-            `${where}: the file must have a default export that is a class with a handle() method`,
+            `${where}: the file must have a default export that is a class with a handle() method on its prototype`,
           );
         }
       } else if (!isObject(proto)) {
@@ -227,7 +229,7 @@ async function dispatch(kind, message) {
       'HANDLER_NOT_FOUND',
       pair
         ? `${call}: the message file ${pair.key} is in ${pair.label}. Use ${CALLS[pair.kind]}`
-        : `${call}: no pair for the class of the message`,
+        : `${call}: the class of the message is not the default export of a message file in ${kind}`,
     );
   }
 
@@ -241,7 +243,7 @@ async function dispatch(kind, message) {
   if (value === undefined) {
     throw new ZegError(
       'UNDEFINED_RESULT',
-      `query(): the handler of ${pair.key} returned undefined`,
+      `query(): the handler of ${pair.key} returned undefined. Return null for no value`,
     );
   }
   return value;

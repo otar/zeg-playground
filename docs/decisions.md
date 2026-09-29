@@ -220,3 +220,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The README shows zeg as a simple, opinionated CQRS library. It starts with the whole flow of a command and a query in one code block, and it lists the opinions of zeg. The code block contains six files, so it has the tag `jsx`. This added a detail to D-74 and a comment to `eslint.config.js`. The spec changed REQ-134.
 - **Revision 8** (after revision 7): the user selected improvements from a review of the codebase.
   - `zeg()` rejects a glob output with no files, because a glob pattern with no match gives an empty glob output. This changed D-09 and D-37. The spec added REQ-019 and changed the Z4 row of section 2 and REQ-074.
+  - The error texts of common mistakes name the fix, for example `Use import.meta.glob() with { eager: true }` and `Return null for no value`. The texts are still not API (D-54). The spec added REQ-058 and spec detail 26, and it changed REQ-056.

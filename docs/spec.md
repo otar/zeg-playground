@@ -612,7 +612,7 @@ Source: D-54. Test: U.
 - Given the options `{ extra: 1 }`
 - When the test calls `zeg(options)`
 - Then the error text contains `extra`
-- The error text is not part of the API [D-54]. The tests check only these parts of the text and the start of the text (REQ-113).
+- The error text is not part of the API [D-54]. The tests check only these parts of the text, the start of the text (REQ-113) and the hints of REQ-058.
 
 #### REQ-057 zeg() stops at the first check that fails
 
@@ -634,6 +634,25 @@ Source: D-37, D-39. Test: U.
 - Then the call throws `INVALID_CONFIG`, because Z3 checks both options before Z4 reads a glob output
 - When the test calls `zeg({ commands: [cmd, cmd, { './X.js': { default: B } }] })`
 - Then the call throws `INVALID_CONFIG`, and the error text contains `commands[2]` and `./X.js`, because a failed check of Z5 comes before a failed check of Z6
+
+#### REQ-058 The error texts of common mistakes name the fix
+
+Source: D-54. Test: U.
+
+- **(spec detail)** Given each of these mistakes, and the part that its error text contains:
+
+  | Mistake | The error text contains |
+  | --- | --- |
+  | `zeg({ extra: 1 })` | `The options are commands and queries` |
+  | `zeg({ commands: {} })` | `Check the glob pattern` |
+  | `cmd` plus `./B.js` with a function as its module (a lazy glob) | `{ eager: true }` |
+  | `cmd` plus `./B.js` with the class `B` as its module (the glob option `import: 'default'`) | `without the import option` |
+  | a pair of `B` and a handler class with `handle` as a class field | `on its prototype` |
+  | `command(new Map())` after `zeg({ commands: cmd, ... })` | `is not the default export of a message file in commands` |
+  | `query(new B(1))` with a handler of `B` that returns `undefined` | `Return null for no value` |
+
+- When the test calls `zeg()` or dispatches the message
+- Then the error has the code of section 2 or section 3, and its text contains the part of the table
 
 ### 4.6 Dispatch: the message
 
@@ -1127,6 +1146,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 23. The example Worker has no `compatibility_flags` (REQ-123).
 24. The coverage report must contain `src/zeg.js` with more than 0 statements (REQ-131).
 25. The error text of the `TypeError` for an invalid message starts with `command(): ` or `query(): `, followed by a description. The description starts with a character that is not white space (REQ-061).
+26. The error texts of common mistakes name the fix (REQ-058).
 
 ## 6. Decisions and requirements
 
@@ -1178,7 +1198,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-50, D-51 | REQ-110, REQ-111 |
 | D-52 | REQ-112 |
 | D-53 | REQ-113 |
-| D-54 | REQ-056 |
+| D-54 | REQ-056, REQ-058 |
 | D-55, D-56, D-57 | REQ-003 |
 | D-58 | REQ-004 |
 | D-59 | REQ-005 |
