@@ -1,4 +1,4 @@
-// docs/spec.md section 4.3: REQ-020 to REQ-034.
+// docs/spec.md section 4.3: REQ-020 to REQ-036.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { zeg, command, query } from '@otar/zeg';
 import { A, AH, B, BH, cmd, calls, resetCalls } from './spec-fixtures.js';
@@ -6,6 +6,8 @@ import { checkSeen, expectHandled, expectThrows } from './helpers.js';
 import Ping from './fixtures/queries/Ping.js';
 import SplitPing from './fixtures/split/queries/Ping.js';
 import SubPing from './fixtures/split/queries/sub/Ping.js';
+import TsPing from './fixtures/ts/Ping.ts';
+import TsEcho from './fixtures/ts/sub/Echo.ts';
 
 beforeEach(() => {
   resetCalls();
@@ -79,18 +81,20 @@ describe('4.3 zeg(): files and pairs', () => {
     });
   });
 
-  it('REQ-028 a handler file named only Handler.js is not valid', () => {
-    expectThrows('INVALID_CONFIG', { commands: { './Handler.js': { default: AH } } });
-    expectThrows('INVALID_CONFIG', {
-      commands: { './.js': { default: A }, './Handler.js': { default: AH } },
-    });
-    // The same without a folder: the file name is the full path
-    expectThrows('INVALID_CONFIG', {
-      commands: { '.js': { default: A }, 'Handler.js': { default: AH } },
-    });
+  it('REQ-028 a handler file named only Handler.js or Handler.ts is not valid', () => {
+    for (const ext of ['.js', '.ts']) {
+      expectThrows('INVALID_CONFIG', { commands: { [`./Handler${ext}`]: { default: AH } } });
+      expectThrows('INVALID_CONFIG', {
+        commands: { [`./${ext}`]: { default: A }, [`./Handler${ext}`]: { default: AH } },
+      });
+      // The same without a folder: the file name is the full path
+      expectThrows('INVALID_CONFIG', {
+        commands: { [ext]: { default: A }, [`Handler${ext}`]: { default: AH } },
+      });
+    }
   });
 
-  it('REQ-029 only a file whose name ends in Handler.js is a handler file', async () => {
+  it('REQ-029 only a file whose name ends in Handler.js or Handler.ts is a handler file', async () => {
     const error = expectThrows('INVALID_CONFIG', {
       commands: {
         './ErrorHandler.js': { default: AH },
@@ -227,6 +231,38 @@ describe('4.3 zeg(): files and pairs', () => {
       './fixtures/split/query-handlers/sub/PingHandler.js',
     ]);
     expectThrows('INVALID_CONFIG', { queries: { ...messages, ...handlers } });
+  });
+
+  it('REQ-035 message files and handler files can be .ts files', async () => {
+    const output = import.meta.glob('./fixtures/ts/**/*.ts', { eager: true });
+    expect(Object.keys(output).sort()).toEqual([
+      './fixtures/ts/Ping.ts',
+      './fixtures/ts/PingHandler.ts',
+      './fixtures/ts/sub/Echo.ts',
+      './fixtures/ts/sub/EchoHandler.ts',
+    ]);
+    expect(zeg({ queries: output })).toBeUndefined();
+    expect(await query(new TsPing('a'))).toBe('pong a');
+    expect(await query(new TsEcho('b'))).toBe('b');
+  });
+
+  it('REQ-036 a pair uses one extension', async () => {
+    const noHandler = expectThrows('INVALID_CONFIG', {
+      commands: { './B.ts': { default: B }, './BHandler.js': { default: BH } },
+    });
+    expect(noHandler.message).toContain('no handler file ./BHandler.ts');
+    const noMessage = expectThrows('INVALID_CONFIG', {
+      commands: { './BHandler.ts': { default: BH }, './B.js': { default: B } },
+    });
+    expect(noMessage.message).toContain('no message file ./B.ts');
+    // A .js pair and a .ts pair with the same key in one folder are valid.
+    zeg({ commands: { ...cmd, './A.ts': { default: B }, './AHandler.ts': { default: BH } } });
+    const a = new A(1);
+    const b = new B(2);
+    await command(a);
+    await command(b);
+    expectHandled('A', a);
+    expectHandled('B', b);
   });
 
   it('REQ-113 the ZegErrors of this file have known codes', () => {

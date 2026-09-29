@@ -126,8 +126,10 @@ export function zeg(options) {
     }
     for (const path of paths) {
       const where = `${label} ${path}`;
-      if (!path.endsWith('.js')) {
-        fail(`${where}: the file path must end in .js`);
+      // A pair uses one extension: X.js with XHandler.js, or X.ts with XHandler.ts.
+      const ext = path.slice(-3);
+      if ((ext !== '.js' && ext !== '.ts') || path.endsWith('.d.ts')) {
+        fail(`${where}: the file path must end in .js or .ts, but not in .d.ts`);
       }
       const module = output[path];
       if (!isObject(module)) {
@@ -136,7 +138,7 @@ export function zeg(options) {
         );
       }
       const cls = module.default;
-      const isHandler = path.endsWith('Handler.js');
+      const isHandler = path.endsWith(`Handler${ext}`);
       const proto = typeof cls === 'function' ? cls.prototype : undefined;
       if (isHandler) {
         if (!proto || typeof proto.handle !== 'function') {
@@ -147,7 +149,7 @@ export function zeg(options) {
       } else if (!isObject(proto)) {
         fail(`${where}: the file must have a default export that is a class`);
       }
-      files.set(path, { isHandler, cls, proto, where });
+      files.set(path, { ext, isHandler, cls, proto, where });
     }
     checked.push({ kind, label, files });
   }
@@ -158,10 +160,12 @@ export function zeg(options) {
   for (const { kind, label, files } of checked) {
     for (const [path, file] of files) {
       if (file.isHandler) {
-        const messagePath = `${path.slice(0, -10)}.js`;
+        // The path before "Handler.js" or "Handler.ts"
+        const base = path.slice(0, -10);
+        const messagePath = `${base}${file.ext}`;
         const message = files.get(messagePath);
-        if (path === 'Handler.js' || path.endsWith('/Handler.js')) {
-          fail(`${file.where}: the file name has no message name before Handler.js`);
+        if (base === '' || base.endsWith('/')) {
+          fail(`${file.where}: the file name has no message name before Handler${file.ext}`);
         }
         if (!message) {
           fail(`${file.where}: no message file ${messagePath}`);
@@ -171,7 +175,7 @@ export function zeg(options) {
         }
       } else {
         const key = path.slice(0, -3);
-        const handlerPath = `${key}Handler.js`;
+        const handlerPath = `${key}Handler${file.ext}`;
         const handler = files.get(handlerPath);
         if (!handler) {
           fail(`${file.where}: no handler file ${handlerPath}`);

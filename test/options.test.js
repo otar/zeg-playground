@@ -112,12 +112,23 @@ describe('4.2 zeg(): argument and options', () => {
     }
   });
 
-  it('REQ-017 each file path must end in .js', () => {
-    for (const path of ['./A.ts', './A.JS', './A']) {
+  it('REQ-017 each file path must end in .js or .ts, but not in .d.ts', () => {
+    for (const path of ['./A.tsx', './A.mts', './A.cts', './A.jsx', './A.JS', './A', './A.d.ts']) {
       const error = expectThrows('INVALID_CONFIG', {
         commands: { ...cmd, [path]: { default: B } },
       });
       expect(error.message).toContain(path);
+    }
+    // Without the check of the extension, each of these pairs is valid.
+    const pairs = [
+      ['./B.JS', './BHandler.JS'],
+      ['./B.d.ts', './B.dHandler.ts'],
+    ];
+    for (const [message, handler] of pairs) {
+      const error = expectThrows('INVALID_CONFIG', {
+        commands: { ...cmd, [message]: { default: B }, [handler]: { default: BH } },
+      });
+      expect(error.message).toContain(message);
     }
   });
 

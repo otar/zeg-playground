@@ -167,7 +167,7 @@ describe('4.5 zeg(): state and errors', () => {
 
   it('REQ-057 zeg() stops at the first check that fails', () => {
     const e = new Error('e');
-    const badPath = { './B.ts': { default: B } };
+    const badPath = { './B.tsx': { default: B } };
     const unpaired = { './B.js': { default: B } };
     const throwing = {
       get './C.js'() {

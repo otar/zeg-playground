@@ -12,12 +12,12 @@ To change a decision, change this file first. Then update the documents that ref
 - **Kind:** command or query.
 - **Dispatch:** one call to `command()` or `query()`.
 - **Glob output:** the object that `import.meta.glob` returns. Each property name is a file path, and each property value is the module of that file.
-- **Handler file:** a file in a glob output whose name ends in `Handler.js`, for example `RegisterUserHandler.js`.
-- **Message file:** a file in a glob output whose name does not end in `Handler.js`, for example `RegisterUser.js`.
+- **Handler file:** a file in a glob output whose name ends in `Handler.js` or `Handler.ts`, for example `RegisterUserHandler.js`.
+- **Message file:** a file in a glob output whose name does not end in `Handler.js` or `Handler.ts`, for example `RegisterUser.js`.
 - **Message class:** the default export of a message file.
 - **Handler class:** the default export of a handler file.
 - **Pair:** a message file and its handler file.
-- **Key:** the file path of a message file without `.js`, as the glob output supplies it. An example is `./commands/billing/ChargeCard`. **(detail)** With an array, two glob outputs can supply the same key.
+- **Key:** the file path of a message file without its extension (`.js` or `.ts`), as the glob output supplies it. An example is `./commands/billing/ChargeCard`. **(detail)** With an array, two glob outputs can supply the same key.
 - **Plain object:** an object whose prototype is `Object.prototype` or `null`.
 - **Array:** a value for which `Array.isArray()` returns `true`.
 - **Error text:** the `message` property of an error.
@@ -43,11 +43,11 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-09** The `commands` option supplies the command files, and the `queries` option supplies the query files. Each option is a glob output or an array of glob outputs. One glob can have several patterns, so one glob can find files in several folders. **(detail)** An empty array is valid. **(detail)** A glob output with no files is not valid, because a glob pattern with no match gives an empty glob output. If a kind has no files yet, the project leaves out its option or its array entry.
 - **D-10** Each file in a glob output must be part of a pair.
-- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for zeg.
+- **D-11** A message file `X.js` and a handler file `XHandler.js` in the same folder form a pair. The same applies to `X.ts` and `XHandler.ts` (D-78). Each message file must have its handler file, and each handler file must have its message file. The file names must match exactly, and the match is case-sensitive. The files can be in subfolders. **(detail)** A message file and its handler file must be in the same glob output. **(detail)** "The same folder" means the same folder in the file paths of the glob output. With the Vite option `base`, these file paths are relative to the base folder (background fact 22). As a result, the handler files can be in a separate folder of the project (`docs/syntax.md` section 3.9). **(detail)** An object that merges glob outputs with a spread is also a glob output for zeg.
 - **D-12** Files with the same name in different folders form different pairs. For example, `./commands/billing/Charge.js` and `./commands/shop/Charge.js` are valid together.
 - **D-13** Each message file and each handler file has a default export. **(detail)** The library reads only the default export. It ignores other exports.
 - **D-14** Revision 7 removed this decision. It described a negative glob pattern for files that are not part of a pair.
-- **D-15** **(detail)** The name of a message file cannot end in `Handler.js`, because the library then treats it as a handler file.
+- **D-15** **(detail)** The name of a message file cannot end in `Handler.js` or `Handler.ts`, because the library then treats it as a handler file.
 
 ## Resolution
 
@@ -86,10 +86,10 @@ To change a decision, change this file first. Then update the documents that ref
   - **(detail)** The value of `commands` or `queries` is not a plain object and not an array. An entry of such an array is not a plain object.
   - **(detail)** A value in a glob output is not an object. For example, a lazy glob supplies functions, which are not valid.
   - **(detail)** A glob output has no file path.
-  - **(detail)** A file path in a glob output does not end in `.js`.
+  - **(detail)** A file path in a glob output does not end in `.js` or `.ts`, or it ends in `.d.ts` (D-78).
   - A file has no default export.
   - A message file has no handler file in its folder in the same glob output.
-  - A handler file has no message file in its folder in the same glob output. **(detail)** This case includes a handler file with the name `Handler.js` only.
+  - A handler file has no message file in its folder in the same glob output. **(detail)** This case includes a handler file with the name `Handler.js` or `Handler.ts` only, and a handler file whose message file has the other extension.
   - A message class does not pass the check in D-20, or a handler class does not pass the check in D-19.
   - **(detail)** Two message files have the same class as their default export. This applies in one glob output, across the glob outputs of an array and across both kinds. For example, if two globs find the same file, `zeg()` throws this error. Two message classes with the same `prototype` object are also not valid.
 - **D-38** `zeg()` runs when the Worker starts (D-04). As a result, an `INVALID_CONFIG` error stops the Worker at startup, and `vite dev` does not start.
@@ -158,6 +158,12 @@ To change a decision, change this file first. Then update the documents that ref
   - **(detail)** The example of a docblock does not contain `*/`, because `*/` ends the comment. For example, the glob pattern `./commands/**/*.js` contains `*/`.
 - **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code.
 
+## TypeScript (revision 8)
+
+- **D-78** Message files and handler files can be `.js` files or `.ts` files. A pair uses one extension: `X.js` with `XHandler.js`, or `X.ts` with `XHandler.ts`. Vite transforms the `.ts` files.
+  - **(detail)** A file path that ends in `.d.ts` is not valid, because such a file contains only types. The extensions `.tsx`, `.mts`, `.cts`, `.jsx`, `.mjs` and `.cjs` are also not valid.
+  - **(detail)** A `.js` pair and a `.ts` pair with the same name can be in one folder. Both pairs have the same key, so their error texts use the same key.
+
 ## Background facts
 
 The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8.3.1 with Rolldown 1.2.11, `@cloudflare/vite-plugin` 1.60.2, Vitest 4.1.11, `@cloudflare/vitest-plugin` 1.2.8 and workerd 1.20260925.1. The tests ran in local workerd. They did not run on a Cloudflare deployment.
@@ -221,3 +227,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 - **Revision 8** (after revision 7): the user selected improvements from a review of the codebase.
   - `zeg()` rejects a glob output with no files, because a glob pattern with no match gives an empty glob output. This changed D-09 and D-37. The spec added REQ-019 and changed the Z4 row of section 2 and REQ-074.
   - The error texts of common mistakes name the fix, for example `Use import.meta.glob() with { eager: true }` and `Return null for no value`. The texts are still not API (D-54). The spec added REQ-058 and spec detail 26, and it changed REQ-056.
+  - Message files and handler files can be `.ts` files, and a pair uses one extension. zeg rejects `.d.ts` files. Revision 8 added D-78, and it changed the terms Handler file, Message file and Key, D-11, D-15 and D-37. The spec added REQ-035 and REQ-036, and it changed section 1.4, section 2, REQ-017, REQ-028, REQ-029 and REQ-057.

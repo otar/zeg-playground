@@ -13,7 +13,7 @@ zeg does not use class names. It finds the handler through the class of the mess
 ## 2. Project requirements
 
 - The project builds with Vite and `@cloudflare/vite-plugin`. zeg does not support a build with Wrangler only [D-06].
-- Each message file and each handler file is a `.js` file with a default export [D-13, D-37].
+- Each message file and each handler file is a `.js` file or a `.ts` file with a default export [D-13, D-37, D-78].
 - A project does not need the `keepNames` setting [D-08].
 
 The tested versions are Vite 8.3 and `@cloudflare/vite-plugin` 1.60 [D-59].
@@ -172,7 +172,7 @@ export default class RegisterUser {
 
 ### 3.6 Handler files
 
-A handler file has a class as its default export. The name of the handler file is the name of the message file without `.js`, plus `Handler.js`.
+A handler file has a class as its default export. The name of the handler file is the name of the message file without its extension, plus `Handler` and the same extension. For example, `RegisterUser.js` goes with `RegisterUserHandler.js`, and `RegisterUser.ts` goes with `RegisterUserHandler.ts` [D-78].
 
 ```js
 // src/commands/RegisterUserHandler.js
@@ -223,7 +223,7 @@ export default class {
 The rules for files and pairs:
 
 - Each file that a glob finds must be part of a pair [D-10].
-- A handler file name ends in `Handler.js`. Each other file that a glob finds is a message file. For this reason, the name of a message file cannot end in `Handler.js` [D-15].
+- A handler file name ends in `Handler.js` or `Handler.ts`. Each other file that a glob finds is a message file. For this reason, the name of a message file cannot end in `Handler.js` or `Handler.ts` [D-15].
 - `X.js` and `XHandler.js` in the same folder form a pair. Each message file needs its handler file, and each handler file needs its message file. The file names must match exactly, and the match is case-sensitive [D-11].
 - Files with the same name in different folders form different pairs [D-12].
 - zeg reads only the default export of each file [D-13].
@@ -374,7 +374,7 @@ Obey these rules:
 
 - The name of each handler file must end in `Handler.js`.
 - The handler folder must have the same subfolders as the message folder. For example, `src/commands/billing/ChargeCard.js` needs `src/command-handlers/billing/ChargeCardHandler.js`.
-- Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry.
+- Use the patterns of the example. The message glob excludes the handler files with `'!**/*Handler.js'`, and the handler glob finds only the handler files. As a result, the two glob outputs cannot contain the same file path, and the merge does not lose an entry. For `.ts` files, use `'!**/*Handler.ts'` and `'./**/*Handler.ts'`.
 
 If a handler file imports a message class, it uses a path relative to its own folder. For example, `src/command-handlers/RegisterUserHandler.js` contains `import SendWelcomeEmail from '../commands/SendWelcomeEmail.js'`.
 
@@ -538,8 +538,11 @@ zeg({ commands: import.meta.glob('./commands/**/*.js') });
 zeg({ commands: import.meta.glob('./command/**/*.js', { eager: true }) });
 // a wrong folder: the glob output has no files
 
-zeg({ commands: { './commands/Ping.ts': { default: class {} } } });
-// the path does not end in .js
+zeg({ commands: { './commands/Ping.tsx': { default: class {} } } });
+// the path does not end in .js or .ts
+
+zeg({ commands: import.meta.glob('./commands/**/*.ts', { eager: true }) });
+// the glob also finds a .d.ts file, for example ./commands/types.d.ts
 ```
 
 These cases come from the files:

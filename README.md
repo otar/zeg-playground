@@ -75,7 +75,7 @@ npm install @otar/zeg
 
 ## Opinions
 
-- **Pairs by file name.** `X.js` and `XHandler.js` in the same folder form a pair.
+- **Pairs by file name.** `X.js` and `XHandler.js` in the same folder form a pair. `.ts` files work the same way.
 - **Default export only.** zeg reads only the default export of each file that a glob finds. This export must be a class.
 - **No registration.** Vite finds the files at build time, so you do not register handlers.
 - **Classes, not names.** zeg finds the handler through the class of the message. The classes can be anonymous.
@@ -124,7 +124,7 @@ import { zeg, command, query, ZegError } from '@otar/zeg';
 Rules for the files:
 
 - Each file that a glob finds must be part of a pair. To exclude files that are not part of a pair, add a negative pattern to the glob, for example `['./commands/**/*.js', '!**/_*.js']`.
-- A handler file name is the name of the message file without `.js`, plus `Handler.js`. The names are case-sensitive.
+- A handler file name is the name of the message file without its extension, plus `Handler` and the same extension, for example `RegisterUserHandler.ts`. The names are case-sensitive.
 - A message file and its handler file must be in the same folder and in the same glob output.
 - The handler files can be in a separate folder of the project, for example `src/command-handlers/`. The Vite option `base` then makes the file paths in the glob output match. Section 3.9 of `docs/syntax.md` shows the globs.
 - Files with the same name in different folders form different pairs.

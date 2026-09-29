@@ -70,7 +70,7 @@ These words have one meaning in the scenarios:
 - If `X` is an error code, "throws `X`" means that the call throws a `ZegError` whose `code` is `X`. "Rejects with `X`" means the same for a Promise.
 - For another value `v`, "throws `v`" and "rejects with `v`" mean that the value is `v` itself (`Object.is`).
 - "Throws a `TypeError`" and "rejects with a `TypeError`" mean an instance of `TypeError`.
-- The key of a message file is its file path without `.js`, for example `./A` [D-17].
+- The key of a message file is its file path without `.js` or `.ts`, for example `./A` [D-17].
 - An object is a value `v` for which `typeof v === 'object'` and `v !== null`.
 
 ### 1.5 Test environment
@@ -95,7 +95,7 @@ Rule 1 repeats D-68 as revision 4 of `docs/decisions.md` states it. Rules 2 to 8
 | Z1 | Check that `options` is a plain object. | Throw `INVALID_CONFIG`. |
 | Z2 | Read the names of all own properties of `options`, also symbol names and the names of properties that are not enumerable. Check that each name is `commands` or `queries`. | Throw `INVALID_CONFIG`. |
 | Z3 | First for `commands`, then for `queries`, read the own property of `options` one time and make a list of glob outputs. For `undefined`, the list is empty. For a plain object, the list contains that object. For an array, the list contains the entries at the indexes 0 to `length - 1`. Each entry must be a plain object. | Throw `INVALID_CONFIG`. |
-| Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the glob output has at least one file path [D-09]. Check that the path ends in `.js`. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
+| Z4 | First for the list of `commands`, then for the list of `queries`, check each glob output in list order. Use the file paths from `Object.keys()` in that order. Check that the glob output has at least one file path [D-09]. Check that the path ends in `.js` or `.ts`, and not in `.d.ts` [D-78]. Check that the module is an object. Read `module.default` one time and check the class. | Throw `INVALID_CONFIG`. |
 | Z5 | In each glob output, form the pairs. | Throw `INVALID_CONFIG`. |
 | Z6 | Across all glob outputs of both kinds, check that no two message classes have the same `prototype` object. | Throw `INVALID_CONFIG`. |
 | Z7 | Replace the registry with the new pairs. Mark zeg as configured. | This step cannot fail. |
@@ -105,7 +105,8 @@ The rules for the file paths:
 
 - The file name is the part of the path after the last `/`. If the path has no `/`, the file name is the full path. The folder is the part before the file name.
 - `F/X.js` means the folder `F` followed by the file name `X.js`. If `F` is empty, the path is `X.js`.
-- A handler file is a file whose name ends in `Handler.js`. Each other file is a message file [D-15]. The comparisons are case-sensitive.
+- A handler file is a file whose name ends in `Handler.js` or `Handler.ts`. Each other file is a message file [D-15]. The comparisons are case-sensitive.
+- In the rules of this section, `.js` also means `.ts`. A pair uses one extension [D-78].
 
 The rules for the classes (Z4):
 
@@ -281,13 +282,16 @@ Source: D-07, D-37. Test: U.
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
-#### REQ-017 Each file path must end in .js
+#### REQ-017 Each file path must end in .js or .ts, but not in .d.ts
 
-Source: D-37. Test: U.
+Source: D-37, D-78. Test: U.
 
-- Given `cmd` plus a file whose path is one of these values: `'./A.ts'`, `'./A.JS'`, `'./A'`, with the module `{ default: B }`
+- Given `cmd` plus a file whose path is one of these values: `'./A.tsx'`, `'./A.mts'`, `'./A.cts'`, `'./A.jsx'`, `'./A.JS'`, `'./A'`, `'./A.d.ts'`, with the module `{ default: B }`
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
+- Given `cmd` plus one of these pairs: `'./B.JS'` and `'./BHandler.JS'`, `'./B.d.ts'` and `'./B.dHandler.ts'`, with the modules `{ default: B }` and `{ default: BH }`
+- When the test calls `zeg({ commands: output })`
+- Then the call throws `INVALID_CONFIG`, and the error text contains the path of the message file
 
 #### REQ-018 zeg() ignores properties of a glob output that are not enumerable strings
 
@@ -377,17 +381,17 @@ Source: D-11, D-37. Test: U.
 - When the test calls `zeg(options)`
 - Then the call throws `INVALID_CONFIG`
 
-#### REQ-028 A handler file named only Handler.js is not valid
+#### REQ-028 A handler file named only Handler.js or Handler.ts is not valid
 
 Source: D-37. Test: U.
 
-- Given each of these glob outputs:
+- Given each of these glob outputs, also with `.ts` in place of `.js`:
   - `{ './Handler.js': { default: AH } }`
   - `{ './.js': { default: A }, './Handler.js': { default: AH } }`
 - When the test calls `zeg({ commands: output })`
 - Then the call throws `INVALID_CONFIG`
 
-#### REQ-029 Only a file whose name ends in Handler.js is a handler file
+#### REQ-029 Only a file whose name ends in Handler.js or Handler.ts is a handler file
 
 Source: D-15, D-37. Test: U.
 
@@ -464,6 +468,30 @@ Source: D-11, syntax.md 3.9. Test: U.
 - Given `messages` and the handler glob without the option `base`: `import.meta.glob('./fixtures/split/query-handlers/**/*Handler.js', { eager: true })`
 - When the test calls `zeg()` with the merged glob outputs
 - Then the call throws `INVALID_CONFIG`, because the file paths of the handler files do not match the file paths of the message files
+
+#### REQ-035 Message files and handler files can be .ts files
+
+Source: D-78. Test: U.
+
+- Given the folder `test/fixtures/ts/` with these files:
+  - `Ping.ts` with a default class, and `PingHandler.ts` with a default class whose `handle()` returns `pong` plus the text of the message
+  - `sub/Echo.ts` with a default class, and `sub/EchoHandler.ts` with a default class whose `handle()` returns the text of the message
+- When the test calls `zeg({ queries: import.meta.glob('./fixtures/ts/**/*.ts', { eager: true }) })`
+- Then `zeg()` returns `undefined`, and `query()` resolves to the value of the handler for both message classes
+
+#### REQ-036 A pair uses one extension
+
+Source: D-78. Test: U.
+
+- Given the glob output `{ './B.ts': { default: B }, './BHandler.js': { default: BH } }`
+- When the test calls `zeg({ commands: output })`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `no handler file ./BHandler.ts`
+- Given the glob output `{ './BHandler.ts': { default: BH }, './B.js': { default: B } }`
+- When the test calls `zeg({ commands: output })`
+- Then the call throws `INVALID_CONFIG`, and the error text contains `no message file ./B.ts`
+- Given `cmd` plus `./A.ts` with the module `{ default: B }` and `./AHandler.ts` with the module `{ default: BH }`
+- When the test calls `zeg({ commands: output })`, `await command(new A(1))` and `await command(new B(2))`
+- Then `AH` handles the first message, and `BH` handles the second message
 
 ### 4.4 zeg(): classes
 
@@ -619,7 +647,7 @@ Source: D-54. Test: U.
 Source: D-37, D-39. Test: U.
 
 - **(spec detail)** Given these glob outputs:
-  - `badPath = { './B.ts': { default: B } }`, which fails the path check of Z4
+  - `badPath = { './B.tsx': { default: B } }`, which fails the path check of Z4
   - `unpaired = { './B.js': { default: B } }`, which passes Z4 and fails Z5
   - `throwing`, a glob output with an enumerable getter for `./C.js` that throws the value `e`
 - When the test calls `zeg({ commands: [badPath, throwing] })`
@@ -1214,3 +1242,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-75 | REQ-133 |
 | D-76 | REQ-135 |
 | D-77 | REQ-136 |
+| D-78 | REQ-017, REQ-028, REQ-035, REQ-036 |
