@@ -104,6 +104,21 @@ describe('4.14 middleware', () => {
     expect(args[1][2]).toEqual({ kind: 'query', key: './Q' });
   });
 
+  it('REQ-142 (S5) a middleware function gets undefined as this', async () => {
+    let self = 'unset';
+    Zeg({
+      commands: cmd,
+      middleware: [
+        function (message, next) {
+          self = this;
+          return next();
+        },
+      ],
+    });
+    await command(new A(1));
+    expect(self).toBeUndefined();
+  });
+
   it('REQ-143 next() resolves to the result of a query and to undefined for a command', async () => {
     const values = [];
     const record = async (message, next) => {
@@ -124,6 +139,20 @@ describe('4.14 middleware', () => {
     expect(await query(new Q(1))).toBe(42);
     expect(await command(new A(1))).toBeUndefined();
     expect(values).toEqual([{ tag: 'Q', v: 1 }, undefined]);
+  });
+
+  it('REQ-143 (S5) next() of an outer middleware function resolves to undefined for a command', async () => {
+    const values = [];
+    const outer = async (message, next) => {
+      values.push(await next());
+    };
+    const inner = async (message, next) => {
+      await next();
+      return 42;
+    };
+    Zeg({ commands: cmd, middleware: [outer, inner] });
+    await command(new A(1));
+    expect(values).toEqual([undefined]);
   });
 
   it('REQ-143 a middleware function can change the result of a query', async () => {
@@ -208,6 +237,29 @@ describe('4.14 middleware', () => {
     expect(seenByMiddleware[0]).toBe(e);
   });
 
+  it('REQ-146 (S6) a value that the handler constructor throws reaches the middleware functions', async () => {
+    const e = { reason: 'constructor' };
+    const seenByMiddleware = [];
+    const watch = async (message, next) => {
+      try {
+        return await next();
+      } catch (error) {
+        seenByMiddleware.push(error);
+        throw error;
+      }
+    };
+    const Throws = class {
+      constructor() {
+        throw e;
+      }
+      handle() {}
+    };
+    Zeg({ commands: pairOf(A, Throws), middleware: [watch] });
+    expect(await settle(command(new A(1)))).toEqual({ ok: false, error: e });
+    expect(seenByMiddleware).toHaveLength(1);
+    expect(seenByMiddleware[0]).toBe(e);
+  });
+
   it('REQ-147 the middleware functions do not run if the dispatch fails before S5', async () => {
     const spy = (message, next) => {
       calls.push('spy');
@@ -244,7 +296,7 @@ describe('4.14 middleware', () => {
     expect(calls).toEqual([['A', m]]);
   });
 
-  it('REQ-148 (S5) a running dispatch keeps the middleware functions of its start', async () => {
+  it('REQ-148 (S5) a running dispatch keeps the middleware functions that were active when it started', async () => {
     let release;
     const gate = new Promise((resolve) => {
       release = resolve;

@@ -36,11 +36,12 @@ let middleware;
  * @callback Middleware
  * @param {object} message The message, as the caller gave it.
  * @param {() => Promise<unknown>} next Runs the next middleware function, or the handler after the
- *   last function. It takes no arguments. For a query, it resolves to the result. For a command, it
- *   resolves to `undefined`. A second call rejects with a `ZegError` with the code
- *   `NEXT_CALLED_TWICE`.
+ *   last function. It takes no arguments. For a query, it resolves to the value of the next
+ *   middleware function or of the handler. For a command, it resolves to `undefined`. A second call
+ *   rejects with a `ZegError` with the code `NEXT_CALLED_TWICE`.
  * @param {DispatchInfo} info The kind and the key of the message.
- * @returns {unknown} For a query, the result of the dispatch.
+ * @returns {unknown} For a query, the value for `next()` of the previous middleware function. The
+ *   value of the first function is the result of `query()`.
  */
 
 /**
@@ -90,10 +91,11 @@ const fail = (text) => {
 };
 
 /**
- * Sets the pairs of message classes and handler classes. Each call replaces all pairs.
+ * Sets the pairs of message classes and handler classes, and the middleware functions. Each call
+ * replaces all pairs and all middleware functions.
  *
- * `Zeg()` checks all options before it changes the pairs. If `Zeg()` throws, the pairs of the
- * previous call stay active.
+ * `Zeg()` checks all options before it changes the pairs and the middleware functions. If `Zeg()`
+ * throws, the pairs and the middleware functions of the previous call stay active.
  *
  * @param {object} options The glob outputs of the command files and the query files, and the
  *   middleware functions.
@@ -286,7 +288,7 @@ async function dispatch(kind, message) {
     );
   }
 
-  // S5: a running dispatch keeps the middleware functions of its start.
+  // S5: a running dispatch keeps the middleware functions that were active when it started.
   const chain = middleware;
   const info = { kind: NAMES[kind], key: pair.key };
   let last = -1;
@@ -298,11 +300,16 @@ async function dispatch(kind, message) {
       );
     }
     last = i;
+    let value;
     if (i < chain.length) {
-      return chain[i](message, () => step(i + 1), info);
+      // A call without a receiver. As a result, `this` of the function is not the list.
+      const fn = chain[i];
+      value = await fn(message, () => step(i + 1), info);
+    } else {
+      // S6 to S8
+      value = await new pair.Handler().handle(message);
     }
-    // S6 to S8
-    const value = await new pair.Handler().handle(message);
+    // For a command, each next() resolves to undefined (D-83).
     return kind === 'queries' ? value : undefined;
   };
   const value = await step(0);
@@ -324,12 +331,14 @@ async function dispatch(kind, message) {
  * Dispatches a command to its handler. Zeg finds the handler through the class of the message.
  *
  * @param {object} message An instance of a message class from the `commands` option.
- * @returns {Promise<undefined>} Resolves to `undefined` when `handle()` is complete. Rejects with
+ * @returns {Promise<undefined>} Resolves to `undefined` when the dispatch is complete. Rejects with
  *   a `TypeError` if the message is not an object, or if it is `null`, a function, an array or a
  *   plain object. Rejects with a `ZegError` with the code `NOT_CONFIGURED` or `HANDLER_NOT_FOUND`
  *   if Zeg cannot find the handler. If a step of the dispatch throws a value, rejects with the
- *   same value. Examples are a Proxy trap of the message, the handler constructor and the call of
- *   `handle()`. If the Promise from `handle()` rejects, rejects with the same value.
+ *   same value. Examples are a Proxy trap of the message, a middleware function, the handler
+ *   constructor and the call of `handle()`. If the Promise from a middleware function or from
+ *   `handle()` rejects, rejects with the same value. A second call to `next()` in a middleware
+ *   function rejects with a `ZegError` with the code `NEXT_CALLED_TWICE`.
  * @example
  * await command(new RegisterUser('a@b.c'));
  */
@@ -342,8 +351,9 @@ export function command(message) {
  *
  * @template [T=unknown]
  * @param {object} message An instance of a message class from the `queries` option.
- * @returns {Promise<T>} Resolves to the return value of `handle()`, after `await`. Rejects with a
- *   `ZegError` with the code `UNDEFINED_RESULT` if this value is `undefined`. The other errors are
+ * @returns {Promise<T>} Resolves to the return value of `handle()`, after `await`. With middleware
+ *   functions, resolves to the value of the first middleware function, after `await`. Rejects with
+ *   a `ZegError` with the code `UNDEFINED_RESULT` if this value is `undefined`. The other errors are
  *   the same as for {@link command}.
  * @example
  * const user = await query(new GetUser('a@b.c'));

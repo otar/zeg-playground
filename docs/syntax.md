@@ -289,7 +289,7 @@ export async function logDispatch(message, next, { kind, key }) {
 }
 ```
 
-A `POST /` request writes three lines: `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` (the nested dispatch) and `query ./queries/GetUser`.
+For a `POST /` request, `logDispatch` writes three lines: `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` (the nested dispatch) and `query ./queries/GetUser`.
 
 ### 3.8 Files in several folders
 
@@ -488,11 +488,11 @@ middleware(message, next, info) -> a value, or a Promise of a value
 
 - For a query, `next()` resolves to the value of the next middleware function or of the handler. For a command, it resolves to `undefined` [D-83].
 - The first function is the outermost. `middleware: [a, b]` runs the start of `a`, the start of `b`, the handler, the end of `b` and the end of `a` [D-81].
-- The functions run one time for each dispatch, after Zeg finds the handler. For a `TypeError`, `NOT_CONFIGURED` and `HANDLER_NOT_FOUND`, no middleware function runs [D-82].
+- The functions run one time for each dispatch, after Zeg finds the handler. If a check before this fails, the Promise rejects with a `TypeError`, `NOT_CONFIGURED` or `HANDLER_NOT_FOUND`, and no middleware function runs [D-82].
 - A nested dispatch runs the functions again [D-82].
-- `Zeg()` copies the array. A dispatch uses the functions of the last `Zeg()` call before its start [D-39, D-82].
+- `Zeg()` copies the array. A dispatch uses the middleware functions that are active when the dispatch starts [D-39, D-82].
 
-This function logs each error and gives the same error to the caller:
+This function writes each error and gives the same error to the caller:
 
 ```js
 // src/middleware/logErrors.js
@@ -534,7 +534,7 @@ export const logDispatch: Middleware = (message, next, { kind, key }) => {
 Rules for middleware functions:
 
 - In a `try` block, write `return await next()`. Without `await`, the `catch` block does not get the error of the handler.
-- Call `next()` one time. A second call rejects with a `ZegError` with the code `NEXT_CALLED_TWICE` [D-83].
+- Call `next()` one time. A second call rejects with a `ZegError` with the code `NEXT_CALLED_TWICE` [D-83]. The dispatch rejects with this error if the middleware function returns or awaits the second `next()`.
 - To use a function for one kind only, check `info.kind` in the function.
 - If the first middleware function gives `undefined` to `query()`, `query()` rejects with `UNDEFINED_RESULT` [D-44].
 - `handle()` starts during the call to `command()` or `query()` only if each middleware function calls `next()` before its first `await` [D-83].
@@ -582,7 +582,7 @@ command(message) -> Promise<undefined>
 - Zeg finds the handler through the class of `message` [D-16].
 - Zeg gives `message` to `handle()` as it is. It does not freeze, copy or change it [D-29].
 - The middleware functions run around `handle()` (section 3.11).
-- The Promise resolves to `undefined` when `handle()` is complete [D-42].
+- The Promise resolves to `undefined` when the dispatch is complete [D-42].
 - If an error occurs, the Promise rejects. `command()` never throws synchronously [D-41].
 
 ### 4.3 query(message)
@@ -687,7 +687,7 @@ export default class {
 | `NOT_CONFIGURED` | the Promise of `command()` or `query()` rejects | No call to `Zeg()` returned without an error before the dispatch [D-46]. |
 | `HANDLER_NOT_FOUND` | the Promise of `command()` or `query()` rejects | The class of the message is not a message class of this kind [D-47]. |
 | `UNDEFINED_RESULT` | the Promise of `query()` rejects | The query handler or a middleware function returned `undefined` [D-44]. |
-| `NEXT_CALLED_TWICE` | the Promise of `command()` or `query()` rejects | A middleware function called `next()` a second time [D-83]. |
+| `NEXT_CALLED_TWICE` | the Promise of the second `next()` rejects | A middleware function called `next()` a second time [D-83]. |
 
 ### 6.1 INVALID_CONFIG cases
 
