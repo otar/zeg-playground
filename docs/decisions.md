@@ -12,6 +12,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **Kind:** command or query.
 - **Dispatch:** one call to `command()` or `query()`.
 - **Middleware function:** a function that runs around the handler of each dispatch. It gets the message, `next` and `info` (D-81, D-83).
+- **Recipe:** project code that uses a middleware function for a common task, for example tracing (D-85). A recipe is not part of the library.
 - **Glob output:** the object that `import.meta.glob` returns. Each property name is a file path, and each property value is the module of that file.
 - **Handler file:** a file in a glob output whose name ends in `Handler.js` or `Handler.ts`, for example `RegisterUserHandler.js`.
 - **Message file:** a file in a glob output whose name does not end in `Handler.js` or `Handler.ts`, for example `RegisterUser.js`.
@@ -197,6 +198,12 @@ To change a decision, change this file first. Then update the documents that ref
   - **(detail)** A data field with the name `result` also sets the result type. For this reason, a query message must not use the name `result` for data.
   - **(detail)** In JavaScript, a class field with a JSDoc type also sets the result type, but it adds an own property with the value `undefined`. For this reason, the documents show `/** @type {User} */` on the variable for JavaScript.
 
+## Recipes (revision 10)
+
+- **D-85** Tracing, background commands and the recording of dispatches in a test are recipes. They are project code in the example Worker or in a test, and `docs/syntax.md` shows them. The library keeps four exports and imports no modules (D-02, D-03).
+  - **(detail)** The recording recipe is the function `recordDispatches(skip)` in `docs/syntax.md` section 7.6. It records the key of each dispatch. For a command whose key is in `skip`, it returns without a call to `next()`. It skips only commands, because `query()` rejects the value `undefined` (D-44).
+  - **(detail)** The unit tests of the library do not import files of `examples/`, because Stryker ignores this folder (D-75). For this reason, `test/recipes.test.js` uses the fixtures of the spec, and a static check compares its function with section 7.6.
+
 ## Background facts
 
 The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8.3.1 with Rolldown 1.2.11, `@cloudflare/vite-plugin` 1.60.2, Vitest 4.1.11, `@cloudflare/vitest-plugin` 1.2.8 and workerd 1.20260925.1. The tests ran in local workerd. They did not run on a Cloudflare deployment.
@@ -279,3 +286,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - Background fact 21 has the numbers of the mutation run of revision 9.
 - **Revision 10** (after revision 9): the user asked for typed query results and for three recipes with middleware functions. The recipes are tracing, a test that records the dispatches, and background commands.
   - A query message class can state its result type with the property `result`. Only the docblock of `query()` changed. Revision 10 added D-84 and background fact 25, and it changed D-76 and D-77. The spec added REQ-139 and changed REQ-138 and section 6. In `docs/syntax.md`, sections 3.10 and 4.3 changed.
+  - The recording recipe is in `docs/syntax.md` section 7.6 and in `test/recipes.test.js`. Revision 10 added the term Recipe and D-85. The spec added section 4.15 with REQ-150, and it changed section 6. In `docs/syntax.md`, section 3 changed, and section 7.6 is new.

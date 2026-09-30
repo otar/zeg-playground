@@ -47,6 +47,7 @@ test/
   users.test.js
   fake-handler.test.js
   get-user-handler.test.js
+  record-dispatches.test.js
 ```
 
 ### 3.1 package.json
@@ -926,6 +927,46 @@ it('returns null for an unknown user', async () => {
 - If no file imports `cloudflare:test`, `src/index.js` runs at the first `exports.default.fetch()` in a test file. Its `Zeg()` call then replaces the handlers of the test.
 - For these reasons, each test calls `Zeg()` with the files that it needs.
 - Do not use `vi.resetModules()` in tests that use Zeg. A reset creates new class objects and a new instance of Zeg (background fact 14). A glob in the test file still supplies the classes from before the reset.
+
+### 7.6 Test of a nested dispatch
+
+The handler of `RegisterUser` dispatches `SendWelcomeEmail`. A test can check this dispatch, and the mail handler does not run. The middleware function `record` records the key of each dispatch, and it skips the commands in the list `skip` [D-85]:
+
+```js
+// test/record-dispatches.test.js
+import { it, expect } from 'vitest';
+import { Zeg, command } from '@otar/zeg';
+import RegisterUser from '../src/commands/RegisterUser.js';
+
+// The middleware function records the key of each dispatch. For a command whose key is in `skip`,
+// it returns without a call to next(), so the handler does not run.
+function recordDispatches(skip) {
+  const keys = [];
+  const record = (message, next, { kind, key }) => {
+    keys.push(key);
+    if (kind === 'command' && skip.includes(key)) {
+      return undefined;
+    }
+    return next();
+  };
+  return { keys, record };
+}
+
+it('dispatches SendWelcomeEmail and sends no mail', async () => {
+  const { keys, record } = recordDispatches(['../src/commands/SendWelcomeEmail']);
+  Zeg({
+    commands: import.meta.glob('../src/commands/**/*.js', { eager: true }),
+    middleware: [record],
+  });
+  await command(new RegisterUser('a@b.c'));
+  expect(keys).toEqual(['../src/commands/RegisterUser', '../src/commands/SendWelcomeEmail']);
+});
+```
+
+- The keys start with `../src/`, because the globs are in the test file (section 7.2).
+- For a command in the list, `record` returns without a call to `next()`. As a result, the handler does not run [D-83].
+- `record` skips only commands, because `query()` rejects the value `undefined` [D-44]. For a fake query result, use a fake handler (section 7.3).
+- The handler of `RegisterUser` writes to D1, so the test needs the setup of section 7.1.
 
 ## 8. What Zeg does not do
 

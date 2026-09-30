@@ -1335,6 +1335,26 @@ Source: D-41, D-82, D-83. Test: U.
 - When the test calls `await command(new B(1))`
 - Then the log is `['command ./B', 'query ./Q']`
 
+### 4.15 Recipes
+
+A recipe is project code that uses a middleware function for a common task. A recipe is not part of the library [D-85].
+
+#### REQ-150 A middleware function can record the dispatches and skip commands
+
+Source: D-83, D-85, syntax.md 7.6. Test: U and S.
+
+- Given the function `recordDispatches(skip)` of syntax.md section 7.6
+- And a handler `AD` of `A`. It pushes `['A', m]` to `calls`, and then it calls `await command(new B(m.v))`.
+- And `Zeg({ commands, queries: qry, middleware: [record] })` with `recordDispatches(['./B', './Q'])`
+- When the test calls `await command(m)`
+- Then the Promise resolves to `undefined`, the keys are `['./A', './B']`, and `calls` is `[['A', m]]`
+- When the test calls `await query(new Q(2))`
+- Then the Promise resolves to `{ tag: 'Q', v: 2 }`, because the function skips only commands
+- Given `recordDispatches([])`
+- When the test calls `await command(m)`
+- Then the keys are `['./A', './B']`, and both handlers run
+- And a static check finds the same function `recordDispatches` in syntax.md section 7.6 and in `test/recipes.test.js`
+
 ## 5. Spec details for approval
 
 These rules come from this spec, not from a decision. When the user approves phase 2, the user also approves them.
@@ -1442,5 +1462,6 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-80 | REQ-001, REQ-113, REQ-135 |
 | D-81 | REQ-120, REQ-140, REQ-141, REQ-148 |
 | D-82 | REQ-120, REQ-146, REQ-147, REQ-148, REQ-149 |
-| D-83 | REQ-142 to REQ-145, REQ-149 |
+| D-83 | REQ-142 to REQ-145, REQ-149, REQ-150 |
 | D-84 | REQ-139 |
+| D-85 | REQ-150 |

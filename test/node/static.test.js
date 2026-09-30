@@ -310,3 +310,13 @@ describe('1.5 test environment', () => {
     expect(stryker.default.thresholds.break).toBe(100);
   });
 });
+
+describe('4.15 recipes', () => {
+  it('REQ-150 (S) docs/syntax.md section 7.6 and test/recipes.test.js have the same function', () => {
+    const extract = (text) =>
+      text.match(/^function recordDispatches\(skip\) \{\n[\s\S]*?\n\}\n/m)?.[0];
+    const documented = extract(read('docs/syntax.md'));
+    expect(documented).toBeDefined();
+    expect(extract(read('test/recipes.test.js'))).toBe(documented);
+  });
+});
