@@ -1,5 +1,5 @@
 {
-  // The strict consumer check of src/zeg.d.ts (REQ-138). test/node/static.test.js runs tsc with this file.
+  // The strict consumer check of src/zeg.d.ts (REQ-138 and REQ-139). test/node/static.test.js runs tsc with this file.
   "compilerOptions": {
     "strict": true,
     "noEmit": true,

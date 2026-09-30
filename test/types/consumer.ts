@@ -1,4 +1,4 @@
-// A strict TypeScript project that imports Zeg through the package name (REQ-138).
+// A strict TypeScript project that imports Zeg through the package name (REQ-138 and REQ-139).
 import {
   Zeg,
   command,
@@ -55,7 +55,7 @@ export async function check(): Promise<string> {
   const user = await query<{ email: string }>(new GetUser('a@b.c'));
   const done: undefined = await command(new GetUser('a@b.c'));
   const error = new ZegError('INVALID_CONFIG', 'text');
-  // @ts-expect-error: without a type argument and without result, the result of query() is unknown
+  // @ts-expect-error: without a type argument and without the property result, the result of query() is unknown
   void (await query(new GetUser('a@b.c'))).email;
   // The property result of FindUser sets the result type of query().
   const found = await query(new FindUser('a@b.c'));
@@ -64,7 +64,7 @@ export async function check(): Promise<string> {
   void found.email;
   // @ts-expect-error: the result of FindUser is not a string
   const text: string = await query(new FindUser('a@b.c'));
-  // A type argument has priority over result.
+  // A type argument has priority over the property result.
   const typed = await query<{ email: string }>(new FindUser('a@b.c'));
   // @ts-expect-error: a message must be an object
   await command('RegisterUser');

@@ -179,8 +179,8 @@ Zeg({
 
 | Recipe | What it does | Section |
 | --- | --- | --- |
-| Tracing | Each dispatch becomes a span in Workers tracing. A nested dispatch becomes a span inside the span of its caller. | 3.12 |
-| Background commands | A command class with `static background = true` runs in the background. The caller does not wait for its handler. | 3.13 |
+| Tracing | Each dispatch becomes a span in Workers tracing. A nested dispatch becomes a span inside the span of the dispatch that started it. | 3.12 |
+| Background commands | A command whose class has `static background = true` runs in the background. The caller does not wait for its handler. | 3.13 |
 | Test of a nested dispatch | A test records each dispatch and skips the commands that it names. | 7.6 |
 
 The example Worker uses the tracing recipe and the background recipe.

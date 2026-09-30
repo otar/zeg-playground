@@ -1192,7 +1192,7 @@ Source: D-57, D-77. Test: S.
 
 #### REQ-139 query() infers the result type from the property result
 
-Source: D-76, D-84. Test: S.
+Source: D-76, D-77, D-84. Test: S.
 
 - Given `src/zeg.d.ts`, where the parameter of `query()` has the type `{ readonly result?: T } | object`
 - And `test/types/consumer.ts` with the class `FindUser`, which has `declare readonly result?: { email: string } | null;`
@@ -1362,12 +1362,14 @@ Source: D-83, D-85, syntax.md 7.6. Test: U and S.
 Source: D-22, D-85, syntax.md 3.13. Test: B.
 
 - Given a copy of the example Worker in which the handler of `SendWelcomeEmail` waits 3 s before it writes `welcome mail to a@b.c`
-- When the test runs `vite build`, starts the Worker with `vite preview`, and sends `POST /` with the body `{"email":"a@b.c"}`
-- Then the response has the status 200 and the body `{"email":"a@b.c"}`
+- When the test runs `vite build`, starts the Worker with `vite preview` and sends `GET /wrong-kind`, which returns the status 400
+- And then the test sends `POST /` with the body `{"email":"a@b.c"}`
+- Then the response to `POST /` has the status 200 and the body `{"email":"a@b.c"}`
+- And the test gets this response less than 3 s after it sends `POST /`
 - And at that time, the console output does not contain `welcome mail to a@b.c`
 - And within 15 s, the console output contains `command ./commands/SendWelcomeEmail` and `welcome mail to a@b.c`
 - And the console output contains no line of a failed dispatch
-- And the same applies to `vite dev`, after a first request `GET /wrong-kind` that returns the status 400
+- And the same applies to `vite dev`
 
 ## 5. Spec details for approval
 

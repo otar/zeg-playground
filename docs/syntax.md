@@ -282,7 +282,7 @@ The caller imports a message class with a default import. You can use any local 
 
 Vite reads the glob patterns at build time. For this reason, each pattern must be a string literal in your own file [D-07].
 
-The middleware function `logDispatch` writes one line for each dispatch, for example `command ./commands/RegisterUser`. It also writes each error, and it gives the same error to the caller. Its file is outside the folders of the globs [D-81]. Section 3.11 describes middleware functions.
+The middleware function `logDispatch` writes one line for each dispatch, for example `command ./commands/RegisterUser`. It also writes each error that reaches it, and it gives the same error to the caller. The error of a background command does not reach it (section 3.13). Its file is outside the folders of the globs [D-81]. Section 3.11 describes middleware functions.
 
 ```js
 // src/middleware/logDispatch.js
@@ -521,6 +521,7 @@ The lab used this `tsconfig.json` (background fact 24):
 - `declare` adds no property at runtime. Zeg does not read the property. TypeScript does not compare it with the return type of the handler.
 - Without the property `result`, the result type is `unknown`. A type argument, for example `query<User>()`, has priority over `result`.
 - Do not use the name `result` for a data field of a query message. The type of such a field becomes the result type.
+- If a message has a union type, for example `GetUser | GetOrder`, TypeScript can infer a wrong result type. For such a message, give a type argument, for example `query<User | Order | null>(message)`.
 - A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `Zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders. If one of these folders contains a `.d.ts` file, add `'!**/*.d.ts'` to the glob.
 
 ### 3.11 Middleware
@@ -535,7 +536,7 @@ Zeg({
 });
 ```
 
-Put the middleware files outside the folders of the globs, for example in `src/middleware/`. Each file that a glob finds must be part of a pair [D-10, D-81]. Section 3.7 shows the middleware function of the example project.
+Put the middleware files outside the folders of the globs, for example in `src/middleware/`. Each file that a glob finds must be part of a pair [D-10, D-81]. Section 3.7 shows the middleware functions of the example project.
 
 A middleware function gets three arguments [D-83]:
 
@@ -619,7 +620,8 @@ POST /
 - The name of each span is the kind and the key of the message, for example `command ./commands/RegisterUser`.
 - `enterSpan()` makes the span active while `next()` runs. As a result, the span of a nested dispatch is inside the span of the dispatch that started it.
 - The span ends when the Promise of `next()` settles. `enterSpan()` gives the value and the error of `next()` to the caller unchanged (background fact 26).
-- `tracing` needs no compatibility flag. Without tracing, for example in `vite dev`, the span records nothing, and the dispatch runs as before (background fact 26).
+- `tracing` needs no compatibility flag. In a Worker without tracing, the span records nothing, and the dispatch runs as before (background fact 26).
+- `vite dev` and `vite preview` record the spans locally, because `@cloudflare/vite-plugin` turns on local observability by default (background fact 26).
 - Zeg itself imports no modules [D-03]. For this reason, tracing is a recipe of the project and not a part of Zeg.
 
 To record the spans of a deployed Worker, turn on traces in `wrangler.jsonc`. Workers tracing is in beta, and the lab did not test a deployment.
@@ -646,7 +648,7 @@ export default class {
 - `waitUntil()` keeps the Worker alive until the handler completes, also after the Worker sends the response.
 - If the handler has no `await`, it completes during the call to `command()`.
 - The caller does not get an error of a background command. `background` writes each error to the log.
-- Dispatch a background command only in a handler, for example in `fetch()` or in a command handler. In the global scope, `waitUntil()` throws an error (background fact 26).
+- Dispatch a background command only during a request, for example in `fetch()` or in a command handler. In the global scope, `waitUntil()` throws an error (background fact 26).
 - The work in the background is not durable. If the handler fails, nothing runs it again. For durable work, use Cloudflare Queues [D-01].
 - The tests of section 7 call `Zeg()` without `background`. As a result, a background command runs there as a normal command.
 
@@ -654,7 +656,7 @@ The order of the middleware functions in section 3.7 is `[logDispatch, backgroun
 
 - `logDispatch` is the outermost function. It writes the line of each dispatch at once, also for a background command.
 - `background` is before `traceDispatch`. As a result, the span of a background command covers the work of its handler.
-- `background` catches each error of a background command. As a result, the log contains each error one time.
+- `background` is inside `logDispatch` and catches each error of a background command. As a result, the error does not reach `logDispatch`, and the log contains each error one time.
 
 ## 4. API
 
@@ -1032,8 +1034,9 @@ import { it, expect } from 'vitest';
 import { Zeg, command } from '@otar/zeg';
 import RegisterUser from '../src/commands/RegisterUser.js';
 
-// The middleware function records the key of each dispatch. For a command whose key is in `skip`,
-// it returns without a call to next(), so the handler does not run.
+// Returns the middleware function `record` and the array `keys`. `record` records the key of each
+// dispatch. For a command whose key is in `skip`, `record` returns without a call to next(), so the
+// handler does not run.
 function recordDispatches(skip) {
   const keys = [];
   const record = (message, next, { kind, key }) => {

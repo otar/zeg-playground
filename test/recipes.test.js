@@ -1,5 +1,6 @@
-// docs/spec.md section 4.15: REQ-150. The recipe of docs/syntax.md section 7.6, with the fixtures of
-// section 1.4 in place of the handlers of the example Worker, which need a D1 database.
+// docs/spec.md section 4.15: REQ-150. The tests use the recipe of docs/syntax.md section 7.6.
+// The handlers of the example Worker need a D1 database, so the tests use the fixtures of
+// docs/spec.md section 1.4.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Zeg, command, query } from '@otar/zeg';
 import { A, B, BH, Q, qry, calls, resetCalls } from './spec-fixtures.js';
@@ -9,8 +10,9 @@ beforeEach(() => {
   resetCalls();
 });
 
-// The middleware function of docs/syntax.md section 7.6. It records the key of each dispatch. For
-// a command whose key is in `skip`, it returns without a call to next(), so the handler does not run.
+// The function of docs/syntax.md section 7.6. It returns the middleware function `record` and the
+// array `keys`. `record` records the key of each dispatch. For a command whose key is in `skip`,
+// `record` returns without a call to next(), so the handler does not run.
 function recordDispatches(skip) {
   const keys = [];
   const record = (message, next, { kind, key }) => {

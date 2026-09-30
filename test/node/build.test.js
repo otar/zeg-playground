@@ -274,8 +274,10 @@ describe('4.15 recipes', () => {
             60_000,
           );
           expect(ready && !server.exited, server.output).toBe(true);
-          // The first request to vite dev can wait for Vite. This request writes no data.
+          // The first request to vite dev can wait for Vite. This request writes no data. The test
+          // sends it in both modes.
           expect((await fetch(`${server.url}/wrong-kind`)).status, server.output).toBe(400);
+          const started = Date.now();
           const post = await fetch(`${server.url}/`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -285,7 +287,9 @@ describe('4.15 recipes', () => {
             200,
             '{"email":"a@b.c"}',
           ]);
-          // The response came before the mail handler completed.
+          // The response came before the mail handler completed. If command() waits for the
+          // handler, POST / takes at least 3 s.
+          expect(Date.now() - started, `vite ${mode}`).toBeLessThan(3_000);
           expect(server.output, `vite ${mode}`).not.toContain('welcome mail to a@b.c');
           const lines = ['command ./commands/SendWelcomeEmail', 'welcome mail to a@b.c'];
           expect(
