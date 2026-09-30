@@ -1039,7 +1039,7 @@ Source: D-53, D-80. Test: U.
 
 #### REQ-120 The example Worker works after a production build
 
-Source: D-04, D-05, D-06, D-07, D-69, D-81, D-82, syntax.md 3. Test: B.
+Source: D-04, D-05, D-06, D-07, D-69, D-81, D-82, D-85, syntax.md 3. Test: B.
 
 - **(spec detail)** Given `examples/basic-worker/`. It contains the example project of syntax.md section 3 without the test files, plus one route:
 
@@ -1058,6 +1058,8 @@ Source: D-04, D-05, D-06, D-07, D-69, D-81, D-82, syntax.md 3. Test: B.
 - Then each response has the expected status and body
 - And the console output of `vite preview` contains `welcome mail to a@b.c`, which shows the nested dispatch
 - And the console output contains the lines `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` and `query ./queries/GetUser` of the middleware function `logDispatch`
+- And the console output contains no line of a failed dispatch, for example `command ./commands/RegisterUser failed`
+- And the built file `dist/users_worker/index.js` contains `enterSpan(`, the call of the middleware function `traceDispatch`
 
 #### REQ-121 The example Worker works after a minified build
 
@@ -1080,7 +1082,7 @@ Source: D-38, D-69. Test: B.
 
 #### REQ-123 The example Worker needs no compatibility flags
 
-Source: D-22, background fact 10. Test: S.
+Source: D-22, D-85, background facts 10 and 26. Test: S.
 
 - **(spec detail)** Given `examples/basic-worker/wrangler.jsonc`
 - When a static check reads it
@@ -1464,4 +1466,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-82 | REQ-120, REQ-146, REQ-147, REQ-148, REQ-149 |
 | D-83 | REQ-142 to REQ-145, REQ-149, REQ-150 |
 | D-84 | REQ-139 |
-| D-85 | REQ-150 |
+| D-85 | REQ-120, REQ-123, REQ-150 |

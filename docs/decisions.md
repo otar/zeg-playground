@@ -62,7 +62,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-19** `Zeg()` checks each handler class. The class must be a function, and `HandlerClass.prototype.handle` must be a function. A `handle()` method that the class inherits from a base class passes this check. A class field such as `handle = () => {}` does not pass.
 - **D-20** **(detail)** `Zeg()` checks each message class. The class must be a function whose `prototype` is an object.
 - **D-21** The library creates a new handler instance for each dispatch, with `new HandlerClass()` and no arguments.
-- **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message. **(detail)** A middleware function also gets no context. It gets only the message, `next` and `info` (D-83).
+- **D-22** The library gives no context to handlers. When a handler needs `env` or `waitUntil`, it imports them from `'cloudflare:workers'`. A handler cannot get the `Request` object. The caller must put the data that the handler needs into the message. **(detail)** A middleware function also gets no context. It gets only the message, `next` and `info` (D-83). **(detail)** The recipes of D-85 import `tracing` and `waitUntil` from `'cloudflare:workers'` in the same way.
 - **D-23** A handler dispatches another message with `command()` or `query()` from `'@otar/zeg'`.
 - **D-24** The library has no guard against recursive dispatch.
 - **D-25** **(detail)** A message file or a handler file must not import the Worker entry file. Such an import cycle can cause `undefined` values and no error.
@@ -202,6 +202,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 - **D-85** Tracing, background commands and the recording of dispatches in a test are recipes. They are project code in the example Worker or in a test, and `docs/syntax.md` shows them. The library keeps four exports and imports no modules (D-02, D-03).
   - **(detail)** The recording recipe is the function `recordDispatches(skip)` in `docs/syntax.md` section 7.6. It records the key of each dispatch. For a command whose key is in `skip`, it returns without a call to `next()`. It skips only commands, because `query()` rejects the value `undefined` (D-44).
+  - **(detail)** The tracing recipe is the middleware function `traceDispatch` in `src/middleware/traceDispatch.js` of the example Worker. It calls `tracing.enterSpan()` from `'cloudflare:workers'` with the name `${kind} ${key}`. It needs no compatibility flag, and the example has no `observability` setting (background fact 26).
   - **(detail)** The unit tests of the library do not import files of `examples/`, because Stryker ignores this folder (D-75). For this reason, `test/recipes.test.js` uses the fixtures of the spec, and a static check compares its function with section 7.6.
 
 ## Background facts
@@ -241,6 +242,9 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
     - A TypeScript 7 editor shows the docblocks also in a JavaScript project without a `jsconfig.json` or a `tsconfig.json`.
     - A TypeScript Worker with `.ts` message files and handler files and a strict `tsconfig.json` passed `tsc --noEmit`. It answered 200 in `vite dev` and in `vite preview` after a build. Its `tsconfig.json` had `skipLibCheck`, the `dom` library and `types: ["vite/client"]` for `import.meta.glob`.
 25. On 2026-09-29, the lab checked the result type of D-84 with TypeScript 7.0.2, in memory. A class with `declare readonly result?: User | null` gave `User | null`. A class without the property gave `unknown`, and `query<User>()` still worked. The results were the same with `strict` on and off, with `exactOptionalPropertyTypes` and without `readonly`.
+26. On 2026-09-29, the lab tested workerd 1.20260925.1 with the compatibility date `2026-09-01` and no flags.
+    - The module `cloudflare:workers` exports `tracing` with the function `enterSpan()`. Without tracing, the callback gets a span that records nothing, and `enterSpan()` returns the value of the callback, also a Promise. A sync throw and a rejection reach the caller unchanged.
+    - `waitUntil()` works in a handler and in an event of a Durable Object. In the global scope, it throws the error "Disallowed operation called within global scope". A rejected Promise without `.catch()` stops a `workerd test` run with an error.
 
 ## History
 
@@ -287,3 +291,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 - **Revision 10** (after revision 9): the user asked for typed query results and for three recipes with middleware functions. The recipes are tracing, a test that records the dispatches, and background commands.
   - A query message class can state its result type with the property `result`. Only the docblock of `query()` changed. Revision 10 added D-84 and background fact 25, and it changed D-76 and D-77. The spec added REQ-139 and changed REQ-138 and section 6. In `docs/syntax.md`, sections 3.10 and 4.3 changed.
   - The recording recipe is in `docs/syntax.md` section 7.6 and in `test/recipes.test.js`. Revision 10 added the term Recipe and D-85. The spec added section 4.15 with REQ-150, and it changed section 6. In `docs/syntax.md`, section 3 changed, and section 7.6 is new.
+  - The example Worker has the middleware function `traceDispatch`, which runs each dispatch in a span. Revision 10 added background fact 26, and it changed D-22 and D-85. The spec changed REQ-120, REQ-123 and section 6. In `docs/syntax.md`, sections 3, 3.7 and 3.11 changed, and section 3.12 is new.

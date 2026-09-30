@@ -25,6 +25,9 @@ for (const name of Object.keys(ENV)) {
 
 let dir;
 
+// A line of the middleware functions of the example Worker for a failed dispatch
+const FAILED = /(?:command|query) \.\/\S+ failed/;
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clean = (text) => stripVTControlCharacters(text); // remove the color codes
 
@@ -139,6 +142,8 @@ async function checkRequests(args = []) {
       await waitFor(() => lines.every((line) => server.output.includes(line)), 10_000),
       server.output,
     ).toBe(true);
+    // GET /wrong-kind fails at S4, before the middleware functions run, so no dispatch writes this line.
+    expect(server.output).not.toMatch(FAILED);
   } finally {
     await stop(server);
   }
@@ -166,6 +171,8 @@ afterAll(() => {
 describe('4.12 build and runtime', () => {
   it('REQ-120 the example Worker works after a production build', async () => {
     run('npm', ['run', 'build']);
+    // The middleware function traceDispatch is in the build (D-85).
+    expect(readFileSync(join(dir, 'dist/users_worker/index.js'), 'utf8')).toContain('enterSpan(');
     resetDatabase();
     await checkRequests();
   }, 180_000);

@@ -31,6 +31,7 @@ src/
   index.js
   middleware/
     logDispatch.js
+    traceDispatch.js
   commands/
     RegisterUser.js
     RegisterUserHandler.js
@@ -250,13 +251,14 @@ The rules for handler classes:
 // src/index.js
 import { Zeg, command, query } from '@otar/zeg';
 import { logDispatch } from './middleware/logDispatch.js';
+import { traceDispatch } from './middleware/traceDispatch.js';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
 
 Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
-  middleware: [logDispatch],
+  middleware: [logDispatch, traceDispatch],
 });
 
 export default {
@@ -291,6 +293,19 @@ export async function logDispatch(message, next, { kind, key }) {
 ```
 
 For a `POST /` request, `logDispatch` writes three lines: `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` (the nested dispatch) and `query ./queries/GetUser`.
+
+The middleware function `traceDispatch` runs each dispatch in a span of Workers tracing. Section 3.12 describes it.
+
+```js
+// src/middleware/traceDispatch.js
+import { tracing } from 'cloudflare:workers';
+
+// Runs each dispatch in a span, for example "command ./commands/RegisterUser". Without tracing,
+// the span records nothing, and the dispatch runs as before.
+export function traceDispatch(message, next, { kind, key }) {
+  return tracing.enterSpan(`${kind} ${key}`, () => next());
+}
+```
 
 ### 3.8 Files in several folders
 
@@ -561,6 +576,32 @@ Rules for middleware functions:
 - A middleware function gets no `env` and no `Request` [D-22]. If it needs `env`, it imports `env` from `'cloudflare:workers'`. For an authorization check, put the user into the message.
 - D1 does not support `BEGIN` and `COMMIT`. As a result, a middleware function cannot put a handler into a D1 transaction. A handler can use `env.DB.batch()`, which runs its statements in one transaction.
 - In a deployed Worker, `Date.now()` changes only during I/O. As a result, a time measurement in a middleware function shows only the time of the I/O.
+- Section 3.12 and section 7.6 show recipes with middleware functions [D-85].
+
+### 3.12 Tracing
+
+Workers tracing shows each request as a tree of spans. The middleware function `traceDispatch` of section 3.7 adds one span for each dispatch [D-85]. For a `POST /` request, the spans of the dispatches are:
+
+```
+POST /
+├─ command ./commands/RegisterUser
+│  └─ command ./commands/SendWelcomeEmail
+└─ query ./queries/GetUser
+```
+
+- The name of each span is the kind and the key of the message, for example `command ./commands/RegisterUser`.
+- `enterSpan()` makes the span active while `next()` runs. As a result, the span of a nested dispatch is inside the span of the dispatch that started it.
+- The span ends when the Promise of `next()` settles. `enterSpan()` gives the value and the error of `next()` to the caller unchanged (background fact 26).
+- `tracing` needs no compatibility flag. Without tracing, for example in `vite dev`, the span records nothing, and the dispatch runs as before (background fact 26).
+- Zeg itself imports no modules [D-03]. For this reason, tracing is a recipe of the project and not a part of Zeg.
+
+To record the spans of a deployed Worker, turn on traces in `wrangler.jsonc`. Workers tracing is in beta, and the lab did not test a deployment.
+
+```jsonc
+{
+  "observability": { "traces": { "enabled": true } },
+}
+```
 
 ## 4. API
 
