@@ -31,6 +31,7 @@ src/
   index.js
   middleware/
     logDispatch.js
+    background.js
     traceDispatch.js
   commands/
     RegisterUser.js
@@ -133,6 +134,9 @@ export default class {
 ```js
 // src/commands/SendWelcomeEmail.js
 export default class {
+  // The middleware function background runs this command in the background.
+  static background = true;
+
   constructor(email) {
     this.email = email;
   }
@@ -251,6 +255,7 @@ The rules for handler classes:
 // src/index.js
 import { Zeg, command, query } from '@otar/zeg';
 import { logDispatch } from './middleware/logDispatch.js';
+import { background } from './middleware/background.js';
 import { traceDispatch } from './middleware/traceDispatch.js';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
@@ -258,7 +263,7 @@ import GetUser from './queries/GetUser.js';
 Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
-  middleware: [logDispatch, traceDispatch],
+  middleware: [logDispatch, background, traceDispatch],
 });
 
 export default {
@@ -293,6 +298,28 @@ export async function logDispatch(message, next, { kind, key }) {
 ```
 
 For a `POST /` request, `logDispatch` writes three lines: `command ./commands/RegisterUser`, `command ./commands/SendWelcomeEmail` (the nested dispatch) and `query ./queries/GetUser`.
+
+The middleware function `background` runs the commands with the mark `static background = true` in the background, for example `SendWelcomeEmail`. Section 3.13 describes it.
+
+```js
+// src/middleware/background.js
+import { waitUntil } from 'cloudflare:workers';
+
+// Runs a command in the background if its class has `static background = true`. The handler
+// starts at once, but command() does not wait for it. waitUntil() keeps the Worker alive until the
+// handler completes, also after the response. The caller does not get an error of the handler, so
+// this function writes it.
+export function background(message, next, { kind, key }) {
+  if (kind !== 'command' || message.constructor.background !== true) {
+    return next();
+  }
+  const work = next().catch((error) => {
+    console.error(`${kind} ${key} failed in the background`, error);
+  });
+  waitUntil(work);
+  return undefined;
+}
+```
 
 The middleware function `traceDispatch` runs each dispatch in a span of Workers tracing. Section 3.12 describes it.
 
@@ -576,7 +603,7 @@ Rules for middleware functions:
 - A middleware function gets no `env` and no `Request` [D-22]. If it needs `env`, it imports `env` from `'cloudflare:workers'`. For an authorization check, put the user into the message.
 - D1 does not support `BEGIN` and `COMMIT`. As a result, a middleware function cannot put a handler into a D1 transaction. A handler can use `env.DB.batch()`, which runs its statements in one transaction.
 - In a deployed Worker, `Date.now()` changes only during I/O. As a result, a time measurement in a middleware function shows only the time of the I/O.
-- Section 3.12 and section 7.6 show recipes with middleware functions [D-85].
+- Sections 3.12, 3.13 and 7.6 show recipes with middleware functions [D-85].
 
 ### 3.12 Tracing
 
@@ -602,6 +629,32 @@ To record the spans of a deployed Worker, turn on traces in `wrangler.jsonc`. Wo
   "observability": { "traces": { "enabled": true } },
 }
 ```
+
+### 3.13 Background commands
+
+A command with the mark `static background = true` runs in the background. The caller does not wait for it. The middleware function `background` of section 3.7 does this [D-85]. In the example Worker, `RegisterUserHandler` dispatches `SendWelcomeEmail`, and the response does not wait for the mail.
+
+```js
+// src/commands/SendWelcomeEmail.js (the mark)
+export default class {
+  static background = true;
+}
+```
+
+- `background` calls `next()`. The handler starts at once, during the call to `command()`.
+- `background` gives the Promise of `next()` to `waitUntil()` and returns `undefined`. As a result, `command()` does not wait for the handler to complete.
+- `waitUntil()` keeps the Worker alive until the handler completes, also after the Worker sends the response.
+- If the handler has no `await`, it completes during the call to `command()`.
+- The caller does not get an error of a background command. `background` writes each error to the log.
+- Dispatch a background command only in a handler, for example in `fetch()` or in a command handler. In the global scope, `waitUntil()` throws an error (background fact 26).
+- The work in the background is not durable. If the handler fails, nothing runs it again. For durable work, use Cloudflare Queues [D-01].
+- The tests of section 7 call `Zeg()` without `background`. As a result, a background command runs there as a normal command.
+
+The order of the middleware functions in section 3.7 is `[logDispatch, background, traceDispatch]`:
+
+- `logDispatch` is the outermost function. It writes the line of each dispatch at once, also for a background command.
+- `background` is before `traceDispatch`. As a result, the span of a background command covers the work of its handler.
+- `background` catches each error of a background command. As a result, the log contains each error one time.
 
 ## 4. API
 
@@ -1011,7 +1064,7 @@ it('dispatches SendWelcomeEmail and sends no mail', async () => {
 
 ## 8. What Zeg does not do
 
-- no events, no Cloudflare Queues [D-01]. For a side effect after a command, the command handler dispatches another command.
+- no events, no Cloudflare Queues [D-01]. For a side effect after a command, the command handler dispatches another command. To run it in the background, see section 3.13.
 - no context argument for handlers and middleware functions [D-22]
 - no build with Wrangler only [D-06]
 - no class names for resolution [D-08]

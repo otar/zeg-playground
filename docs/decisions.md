@@ -13,6 +13,7 @@ To change a decision, change this file first. Then update the documents that ref
 - **Dispatch:** one call to `command()` or `query()`.
 - **Middleware function:** a function that runs around the handler of each dispatch. It gets the message, `next` and `info` (D-81, D-83).
 - **Recipe:** project code that uses a middleware function for a common task, for example tracing (D-85). A recipe is not part of the library.
+- **Background command:** a command whose class has the mark `static background = true`. The caller does not wait for its handler (D-85).
 - **Glob output:** the object that `import.meta.glob` returns. Each property name is a file path, and each property value is the module of that file.
 - **Handler file:** a file in a glob output whose name ends in `Handler.js` or `Handler.ts`, for example `RegisterUserHandler.js`.
 - **Message file:** a file in a glob output whose name does not end in `Handler.js` or `Handler.ts`, for example `RegisterUser.js`.
@@ -26,7 +27,7 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Scope
 
-- **D-01** Version 1 contains only `Zeg()`, `command()`, `query()`, `ZegError` and the option `middleware` of D-81. It has no events and no Cloudflare Queues support. **(detail)** For a side effect after a command, the command handler dispatches another command (D-23). For this reason, revision 9 did not add events.
+- **D-01** Version 1 contains only `Zeg()`, `command()`, `query()`, `ZegError` and the option `middleware` of D-81. It has no events and no Cloudflare Queues support. **(detail)** For a side effect after a command, the command handler dispatches another command (D-23). For this reason, revision 9 did not add events. **(detail)** A middleware function can run such a command in the background (D-85).
 - **D-02** The package exports exactly four names: `Zeg`, `command`, `query` and `ZegError`. All four are named exports. The package has no default export. **(detail)** The docblocks define the type names `GlobOutput`, `Middleware` and `DispatchInfo` (D-76). TypeScript can import these type names, for example `import('@otar/zeg').GlobOutput`. They are not values, so the module has no fifth export at runtime.
 - **D-03** The library code imports no modules. It uses only standard JavaScript. **(detail)** As a result, it imports no `node:*` module and no `cloudflare:*` module.
 
@@ -203,6 +204,8 @@ To change a decision, change this file first. Then update the documents that ref
 - **D-85** Tracing, background commands and the recording of dispatches in a test are recipes. They are project code in the example Worker or in a test, and `docs/syntax.md` shows them. The library keeps four exports and imports no modules (D-02, D-03).
   - **(detail)** The recording recipe is the function `recordDispatches(skip)` in `docs/syntax.md` section 7.6. It records the key of each dispatch. For a command whose key is in `skip`, it returns without a call to `next()`. It skips only commands, because `query()` rejects the value `undefined` (D-44).
   - **(detail)** The tracing recipe is the middleware function `traceDispatch` in `src/middleware/traceDispatch.js` of the example Worker. It calls `tracing.enterSpan()` from `'cloudflare:workers'` with the name `${kind} ${key}`. It needs no compatibility flag, and the example has no `observability` setting (background fact 26).
+  - **(detail)** The background recipe is the middleware function `background` in `src/middleware/background.js` of the example Worker. For a command whose class has `static background = true`, it calls `next()`, gives the Promise to `waitUntil()` and returns `undefined`. The handler starts at once, but `command()` does not wait for it. `background` writes each error of the handler, because the caller does not get it. In the example, `SendWelcomeEmail` has the mark.
+  - **(detail)** The order in the example is `[logDispatch, background, traceDispatch]`. Then `logDispatch` writes the line of each dispatch at once, the span of a background command covers the work of its handler, and the log contains each error one time (background fact 26).
   - **(detail)** The unit tests of the library do not import files of `examples/`, because Stryker ignores this folder (D-75). For this reason, `test/recipes.test.js` uses the fixtures of the spec, and a static check compares its function with section 7.6.
 
 ## Background facts
@@ -245,6 +248,7 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
 26. On 2026-09-29, the lab tested workerd 1.20260925.1 with the compatibility date `2026-09-01` and no flags.
     - The module `cloudflare:workers` exports `tracing` with the function `enterSpan()`. Without tracing, the callback gets a span that records nothing, and `enterSpan()` returns the value of the callback, also a Promise. A sync throw and a rejection reach the caller unchanged.
     - `waitUntil()` works in a handler and in an event of a Durable Object. In the global scope, it throws the error "Disallowed operation called within global scope". A rejected Promise without `.catch()` stops a `workerd test` run with an error.
+    - With the order `[background, traceDispatch, logDispatch]`, the log contained each error of a background command two times. With the order `[logDispatch, background, traceDispatch]`, it contained each error one time. In both orders, the handler started during the call to `command()`, and `command()` resolved before the handler completed.
 
 ## History
 
@@ -292,3 +296,4 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - A query message class can state its result type with the property `result`. Only the docblock of `query()` changed. Revision 10 added D-84 and background fact 25, and it changed D-76 and D-77. The spec added REQ-139 and changed REQ-138 and section 6. In `docs/syntax.md`, sections 3.10 and 4.3 changed.
   - The recording recipe is in `docs/syntax.md` section 7.6 and in `test/recipes.test.js`. Revision 10 added the term Recipe and D-85. The spec added section 4.15 with REQ-150, and it changed section 6. In `docs/syntax.md`, section 3 changed, and section 7.6 is new.
   - The example Worker has the middleware function `traceDispatch`, which runs each dispatch in a span. Revision 10 added background fact 26, and it changed D-22 and D-85. The spec changed REQ-120, REQ-123 and section 6. In `docs/syntax.md`, sections 3, 3.7 and 3.11 changed, and section 3.12 is new.
+  - The example Worker has the middleware function `background`, and `SendWelcomeEmail` runs in the background. Revision 10 added the term Background command, and it changed D-01, D-85 and background fact 26. The spec added REQ-151, and it changed section 6. In `docs/syntax.md`, sections 3, 3.5, 3.7, 3.11 and 8 changed, and section 3.13 is new.

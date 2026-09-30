@@ -1,6 +1,7 @@
 // src/index.js
 import { Zeg, command, query } from '@otar/zeg';
 import { logDispatch } from './middleware/logDispatch.js';
+import { background } from './middleware/background.js';
 import { traceDispatch } from './middleware/traceDispatch.js';
 import RegisterUser from './commands/RegisterUser.js';
 import GetUser from './queries/GetUser.js';
@@ -8,7 +9,7 @@ import GetUser from './queries/GetUser.js';
 Zeg({
   commands: import.meta.glob('./commands/**/*.js', { eager: true }),
   queries: import.meta.glob('./queries/**/*.js', { eager: true }),
-  middleware: [logDispatch, traceDispatch],
+  middleware: [logDispatch, background, traceDispatch],
 });
 
 export default {

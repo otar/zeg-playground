@@ -1,4 +1,4 @@
-// Build tests (type B) of docs/spec.md: REQ-120 to REQ-122. They run in Node (section 1.5, rule 7).
+// Build tests (type B) of docs/spec.md: REQ-120 to REQ-122 and REQ-151. They run in Node (section 1.5, rule 7).
 // The tests copy examples/basic-worker/ to a temporary folder and install its packages. The copy uses @otar/zeg
 // from this repository. Then the tests build the Worker and start it in local workerd with Vite.
 import { execFileSync, spawn } from 'node:child_process';
@@ -248,6 +248,57 @@ describe('4.12 build and runtime', () => {
       }
     } finally {
       rmSync(orphan, { force: true });
+    }
+  }, 240_000);
+});
+
+describe('4.15 recipes', () => {
+  it('REQ-151 a background command does not delay the response', async () => {
+    // A copy of the mail handler that waits 3 s
+    const file = join(dir, 'src/commands/SendWelcomeEmailHandler.js');
+    const original = readFileSync(file, 'utf8');
+    const slow = original.replace(
+      '  handle(message) {\n',
+      '  async handle(message) {\n    await new Promise((resolve) => setTimeout(resolve, 3_000));\n',
+    );
+    expect(slow).not.toBe(original);
+    writeFileSync(file, slow);
+    try {
+      run('npm', ['run', 'build']);
+      for (const mode of ['preview', 'dev']) {
+        resetDatabase();
+        const server = await start(mode);
+        try {
+          const ready = await waitFor(
+            () => server.output.includes('Local:') || server.exited,
+            60_000,
+          );
+          expect(ready && !server.exited, server.output).toBe(true);
+          // The first request to vite dev can wait for Vite. This request writes no data.
+          expect((await fetch(`${server.url}/wrong-kind`)).status, server.output).toBe(400);
+          const post = await fetch(`${server.url}/`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{"email":"a@b.c"}',
+          });
+          expect([post.status, await post.text()], `vite ${mode}`).toEqual([
+            200,
+            '{"email":"a@b.c"}',
+          ]);
+          // The response came before the mail handler completed.
+          expect(server.output, `vite ${mode}`).not.toContain('welcome mail to a@b.c');
+          const lines = ['command ./commands/SendWelcomeEmail', 'welcome mail to a@b.c'];
+          expect(
+            await waitFor(() => lines.every((line) => server.output.includes(line)), 15_000),
+            `vite ${mode}: ${server.output}`,
+          ).toBe(true);
+          expect(server.output, `vite ${mode}`).not.toMatch(FAILED);
+        } finally {
+          await stop(server);
+        }
+      }
+    } finally {
+      writeFileSync(file, original);
     }
   }, 240_000);
 });

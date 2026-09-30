@@ -1357,6 +1357,18 @@ Source: D-83, D-85, syntax.md 7.6. Test: U and S.
 - Then the keys are `['./A', './B']`, and both handlers run
 - And a static check finds the same function `recordDispatches` in syntax.md section 7.6 and in `test/recipes.test.js`
 
+#### REQ-151 A background command does not delay the response
+
+Source: D-22, D-85, syntax.md 3.13. Test: B.
+
+- Given a copy of the example Worker in which the handler of `SendWelcomeEmail` waits 3 s before it writes `welcome mail to a@b.c`
+- When the test runs `vite build`, starts the Worker with `vite preview`, and sends `POST /` with the body `{"email":"a@b.c"}`
+- Then the response has the status 200 and the body `{"email":"a@b.c"}`
+- And at that time, the console output does not contain `welcome mail to a@b.c`
+- And within 15 s, the console output contains `command ./commands/SendWelcomeEmail` and `welcome mail to a@b.c`
+- And the console output contains no line of a failed dispatch
+- And the same applies to `vite dev`, after a first request `GET /wrong-kind` that returns the status 400
+
 ## 5. Spec details for approval
 
 These rules come from this spec, not from a decision. When the user approves phase 2, the user also approves them.
@@ -1416,7 +1428,7 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-19 | REQ-042, REQ-089 |
 | D-20 | REQ-041 |
 | D-21 | REQ-080, REQ-081, REQ-089 |
-| D-22 | REQ-082, REQ-123 |
+| D-22 | REQ-082, REQ-123, REQ-151 |
 | D-23 | REQ-086 |
 | D-24 | REQ-087 |
 | D-25, D-26 | Documentation only. These rules describe user code and module loading. Section 2 states what `Zeg()` does if a read throws. |
@@ -1466,4 +1478,4 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-82 | REQ-120, REQ-146, REQ-147, REQ-148, REQ-149 |
 | D-83 | REQ-142 to REQ-145, REQ-149, REQ-150 |
 | D-84 | REQ-139 |
-| D-85 | REQ-120, REQ-123, REQ-150 |
+| D-85 | REQ-120, REQ-123, REQ-150, REQ-151 |
