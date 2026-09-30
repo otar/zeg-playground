@@ -133,7 +133,8 @@ The package contains type declarations in `src/zeg.d.ts`. TypeScript generates t
 
 - A TypeScript project needs the `moduleResolution` value `bundler`, `node16` or `nodenext`.
 - In a JavaScript project with `checkJs`, the editor reports some incorrect calls as errors, for example `command('RegisterUser')`. Zeg also does all its checks at runtime.
-- The result type of `query()` is `unknown`. In TypeScript, write `query<User>(message)`. In JavaScript, write `/** @type {User} */` before the variable.
+- In TypeScript, a query message class can state its result type: `declare readonly result?: User`. Then `query(message)` has the type `Promise<User>`.
+- Without this property, the result type of `query()` is `unknown`. In TypeScript, write `query<User>(message)`. In JavaScript, write `/** @type {User} */` before the variable.
 - For a middleware function in TypeScript, use the type `Middleware`, for example `import type { Middleware } from '@otar/zeg'`.
 
 ## Middleware

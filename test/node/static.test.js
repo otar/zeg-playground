@@ -276,6 +276,19 @@ describe('4.13 docblocks and the type check', () => {
     expect(compilerOptions).not.toHaveProperty('allowJs');
     expect(tsc('-p', 'test/types/tsconfig.json')).toEqual({ status: 0, stdout: '', stderr: '' });
   }, 60_000);
+
+  it('REQ-139 query() infers the result type from the property result', () => {
+    const declaration = read('src/zeg.d.ts')
+      .match(/export declare function query<[\s\S]*?\): Promise<T>;/)?.[0]
+      .replace(/\s/g, '');
+    expect(declaration).toContain('query<T=unknown>(message:');
+    expect(declaration).toMatch(/\{readonlyresult\?:T;?\}\|object/);
+    const consumer = read('test/types/consumer.ts');
+    expect(consumer).toContain('declare readonly result?: { email: string } | null;');
+    expect(consumer).toContain('// @ts-expect-error: the result of FindUser can be null');
+    expect(consumer).toContain('// @ts-expect-error: the result of FindUser is not a string');
+    expect(tsc('-p', 'test/types/tsconfig.json')).toEqual({ status: 0, stdout: '', stderr: '' });
+  }, 60_000);
 });
 
 describe('1.5 test environment', () => {

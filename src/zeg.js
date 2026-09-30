@@ -349,8 +349,14 @@ export function command(message) {
 /**
  * Dispatches a query to its handler. Zeg finds the handler through the class of the message.
  *
+ * In TypeScript, a message class can state the result type with the property `result`, for
+ * example `declare readonly result?: User`. Then `query()` returns `Promise<User>` without a type
+ * argument. A type argument, for example `query<User>()`, has priority. Zeg does not read this
+ * property.
+ *
  * @template [T=unknown]
- * @param {object} message An instance of a message class from the `queries` option.
+ * @param {{ readonly result?: T } | object} message An instance of a message class from the
+ *   `queries` option.
  * @returns {Promise<T>} Resolves to the return value of `handle()`, after `await`. With middleware
  *   functions, resolves to the value of the first middleware function, after `await`. Rejects with
  *   a `ZegError` with the code `UNDEFINED_RESULT` if this value is `undefined`. The other errors are

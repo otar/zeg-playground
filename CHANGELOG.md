@@ -13,3 +13,4 @@ This is the first version of Zeg.
 - `Zeg()` checks all files, pairs and classes when the Worker starts. It also rejects a glob output with no files.
 - The error texts of common mistakes name the fix.
 - The package contains type declarations in `src/zeg.d.ts`.
+- In TypeScript, a query message class can state its result type with `declare readonly result?: T`. Then `query()` returns `Promise<T>` without a type argument.

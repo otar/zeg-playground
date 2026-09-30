@@ -1182,9 +1182,20 @@ Source: D-57, D-77. Test: S.
 - And `consumer.ts` has a `// @ts-expect-error` line for each of these mistakes:
   - `command('RegisterUser')`
   - `Zeg({ handlers: queries })`
-  - `.email` on the result of `query()` without a type argument
+  - `.email` on the result of `query()` without a type argument, for a message class without the property `result`
   - `Zeg({ middleware: ['x'] })`
   - `next(1)` in a middleware function
+- When a static check runs `tsc -p test/types/tsconfig.json`
+- Then the command ends with the exit code 0 and writes no output
+
+#### REQ-139 query() infers the result type from the property result
+
+Source: D-76, D-84. Test: S.
+
+- Given `src/zeg.d.ts`, where the parameter of `query()` has the type `{ readonly result?: T } | object`
+- And `test/types/consumer.ts` with the class `FindUser`, which has `declare readonly result?: { email: string } | null;`
+- And `consumer.ts` reads `found?.email` from `await query(new FindUser('a@b.c'))` without a type argument
+- And `consumer.ts` has a `// @ts-expect-error` line for `found.email` without a check for `null`, and for an assignment of the result to a `string` variable
 - When a static check runs `tsc -p test/types/tsconfig.json`
 - Then the command ends with the exit code 0 and writes no output
 
@@ -1424,11 +1435,12 @@ These rules come from this spec, not from a decision. When the user approves pha
 | D-73 | Development setup only |
 | D-74 | REQ-134 |
 | D-75 | REQ-133 |
-| D-76 | REQ-135 |
-| D-77 | REQ-136, REQ-138 |
+| D-76 | REQ-135, REQ-139 |
+| D-77 | REQ-136, REQ-138, REQ-139 |
 | D-78 | REQ-017, REQ-028, REQ-029, REQ-035, REQ-036 |
 | D-79 | REQ-003, REQ-007 |
 | D-80 | REQ-001, REQ-113, REQ-135 |
 | D-81 | REQ-120, REQ-140, REQ-141, REQ-148 |
 | D-82 | REQ-120, REQ-146, REQ-147, REQ-148, REQ-149 |
 | D-83 | REQ-142 to REQ-145, REQ-149 |
+| D-84 | REQ-139 |

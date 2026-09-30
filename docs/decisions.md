@@ -155,10 +155,10 @@ To change a decision, change this file first. Then update the documents that ref
 
 ## Docblocks (revision 6)
 
-- **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc types `GlobOutput`, `Middleware` and `DispatchInfo`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. A static check makes sure that each export has a docblock.
+- **D-76** Each of the four exports has a JSDoc docblock. A docblock describes the parameters, the return value, the errors and an example. `src/zeg.js` also defines the JSDoc types `GlobOutput`, `Middleware` and `DispatchInfo`. `command()` and `query()` are function declarations. The result type of `query()` is generic, with the default `unknown`. TypeScript infers the result type from the property `result` of the message (D-84). A static check makes sure that each export has a docblock.
   - **(detail)** esbuild removes the docblocks in a minified build, so they do not change the size of D-71. For this reason, no comment in `src/zeg.js` contains `@license`, `@preserve`, `/*!` or `//!`, because esbuild keeps such comments.
   - **(detail)** The example of a docblock does not contain `*/`, because `*/` ends the comment. For example, the glob pattern `./commands/**/*.js` contains `*/`.
-- **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code. **(detail)** A second static check runs `tsc` in strict mode for `test/types/consumer.ts`, a small TypeScript project that imports `@otar/zeg`. The check fails if the project does not get the types of `src/zeg.d.ts`, for example with the error TS7016.
+- **D-77** TypeScript 7 checks the docblocks. `jsconfig.json` turns on `checkJs` and `noEmit` for `src/zeg.js` only, and `strict` is off. A static check runs `tsc -p jsconfig.json`, so `npm test` and CI run the type check (background fact 23). **(detail)** With `strict` off, the check finds errors in the docblocks and type errors in the code, for example an unknown type name. It does not require types in the internal code. **(detail)** A second static check runs `tsc` in strict mode for `test/types/consumer.ts`, a small TypeScript project that imports `@otar/zeg`. The check fails if the project does not get the types of `src/zeg.d.ts`, for example with the error TS7016. **(detail)** `consumer.ts` also checks the result type of D-84.
 
 ## TypeScript (revision 8)
 
@@ -187,6 +187,15 @@ To change a decision, change this file first. Then update the documents that ref
   - A middleware function can change the result of a query. It can stop a dispatch: it throws, or it returns without a call to `next()`.
   - If a middleware function calls `next()` a second time, that call rejects with a `ZegError` with the code `NEXT_CALLED_TWICE`. As a result, a handler runs at most one time for each dispatch. **(detail)** Only the Promise of the second call rejects. The dispatch rejects with this code if the middleware function returns this Promise, or awaits it and does not catch the error.
   - **(detail)** `handle()` starts during the call to `command()` or `query()` only if each middleware function calls `next()` before its first `await`.
+
+## Typed query results (revision 10)
+
+- **D-84** A query message class can state the result type of `query()` with a type-only property `result`, for example `declare readonly result?: User;` in TypeScript. Then `query(new GetUser(email))` has the type `Promise<User>`. Without this property, the type is `unknown`.
+  - **(detail)** Only the docblock of `query()` changes. Its parameter has the type `{ readonly result?: T } | object`. As a result, the size and the mutants of `src/zeg.js` do not change.
+  - **(detail)** `declare` adds no property at runtime. Zeg does not read the property. TypeScript does not compare it with the return type of the handler.
+  - **(detail)** A type argument, for example `query<User>()`, has priority over the property. TypeScript does not compare the two types.
+  - **(detail)** A data field with the name `result` also sets the result type. For this reason, a query message must not use the name `result` for data.
+  - **(detail)** In JavaScript, a class field with a JSDoc type also sets the result type, but it adds an own property with the value `undefined`. For this reason, the documents show `/** @type {User} */` on the variable for JavaScript.
 
 ## Background facts
 
@@ -224,6 +233,7 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
     - With the `moduleResolution` values `bundler`, `node16` and `nodenext`, TypeScript finds `src/zeg.d.ts` through `"exports": "./src/zeg.js"`.
     - A TypeScript 7 editor shows the docblocks also in a JavaScript project without a `jsconfig.json` or a `tsconfig.json`.
     - A TypeScript Worker with `.ts` message files and handler files and a strict `tsconfig.json` passed `tsc --noEmit`. It answered 200 in `vite dev` and in `vite preview` after a build. Its `tsconfig.json` had `skipLibCheck`, the `dom` library and `types: ["vite/client"]` for `import.meta.glob`.
+25. On 2026-09-29, the lab checked the result type of D-84 with TypeScript 7.0.2, in memory. A class with `declare readonly result?: User | null` gave `User | null`. A class without the property gave `unknown`, and `query<User>()` still worked. The results were the same with `strict` on and off, with `exactOptionalPropertyTypes` and without `readonly`.
 
 ## History
 
@@ -267,3 +277,5 @@ The decisions above use these facts. The lab tests used wrangler 4.141.0, Vite 8
   - The example Worker has the middleware function `logDispatch` in `src/middleware/logDispatch.js`. It writes one line for each dispatch. The build tests check these lines. In `docs/syntax.md`, section 3 and section 3.7 show the new file. The spec changed REQ-120.
   - A review of revision 9 found a bug. With two middleware functions, `next()` of the outer function resolved to a value for a command. Now each `next()` of a command resolves to `undefined`, and the library calls each middleware function without `this`. The spec changed REQ-056, REQ-057, REQ-142, REQ-143, REQ-146, the Source lines of REQ-001, REQ-113 and REQ-135, and section 5 (items 29 and 30).
   - Background fact 21 has the numbers of the mutation run of revision 9.
+- **Revision 10** (after revision 9): the user asked for typed query results and for three recipes with middleware functions. The recipes are tracing, a test that records the dispatches, and background commands.
+  - A query message class can state its result type with the property `result`. Only the docblock of `query()` changed. Revision 10 added D-84 and background fact 25, and it changed D-76 and D-77. The spec added REQ-139 and changed REQ-138 and section 6. In `docs/syntax.md`, sections 3.10 and 4.3 changed.

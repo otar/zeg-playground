@@ -420,18 +420,34 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const { email } = (await request.json()) as { email: string };
     await command(new RegisterUser(email));
-    return Response.json(await query<{ email: string } | null>(new GetUser(email)));
+    return Response.json(await query(new GetUser(email)));
   },
 };
+```
+
+```ts
+// src/queries/GetUser.ts
+export type User = { email: string };
+
+export default class GetUser {
+  // The result type of query(). `declare` adds no property at runtime.
+  declare readonly result?: User | null;
+  email: string;
+
+  constructor(email: string) {
+    this.email = email;
+  }
+}
 ```
 
 ```ts
 // src/queries/GetUserHandler.ts
 import { users } from '../store.ts';
 import type GetUser from './GetUser.ts';
+import type { User } from './GetUser.ts';
 
 export default class {
-  handle(message: GetUser): { email: string } | null {
+  handle(message: GetUser): User | null {
     return users.get(message.email) ?? null;
   }
 }
@@ -458,7 +474,10 @@ The lab used this `tsconfig.json` (background fact 24):
 
 - `types: ["vite/client"]` gives the type of `import.meta.glob`.
 - TypeScript finds the types of Zeg with the `moduleResolution` values `bundler`, `node16` and `nodenext`.
-- `query<T>()` sets the result type. Zeg does not check this type at runtime.
+- A query message class can state the result type of `query()` with the property `result` [D-84]. Then `query(new GetUser(email))` has the type `Promise<User | null>`.
+- `declare` adds no property at runtime. Zeg does not read the property. TypeScript does not compare it with the return type of the handler.
+- Without the property `result`, the result type is `unknown`. A type argument, for example `query<User>()`, has priority over `result`.
+- Do not use the name `result` for a data field of a query message. The type of such a field becomes the result type.
 - A glob such as `'./commands/**/*.ts'` also finds `.d.ts` files, and `Zeg()` rejects them [D-78]. Keep `.d.ts` files out of the command folders and the query folders. If one of these folders contains a `.d.ts` file, add `'!**/*.d.ts'` to the glob.
 
 ### 3.11 Middleware
@@ -598,6 +617,7 @@ query(message) -> Promise<result>
 - The Promise resolves to the return value of `handle()`, after `await` [D-43]. With middleware functions, it resolves to the value of the first middleware function, after `await`.
 - If that value is `undefined`, the Promise rejects with a `ZegError` with the code `UNDEFINED_RESULT` [D-44].
 - `query()` never throws synchronously [D-41].
+- In TypeScript, the property `result` of the message class sets the result type (section 3.10) [D-84].
 
 ### 4.4 ZegError
 
