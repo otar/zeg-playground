@@ -14,3 +14,4 @@ This is the first version of Zeg.
 - The error texts of common mistakes name the fix.
 - The package contains type declarations in `src/zeg.d.ts`.
 - In TypeScript, a query message class can state its result type with `declare readonly result?: T`. Then `query()` returns `Promise<T>` without a type argument.
+- `docs/syntax.md` shows three recipes with middleware functions: tracing, background commands and a test of a nested dispatch. The example Worker uses the first two.

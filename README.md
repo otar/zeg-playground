@@ -173,6 +173,18 @@ Zeg({
 - Put the middleware files outside the folders of the globs. Each file that a glob finds must be part of a pair.
 - Section 3.11 of `docs/syntax.md` has all rules for middleware functions.
 
+### Recipes
+
+`docs/syntax.md` shows three recipes with middleware functions. A recipe is code of your project. It needs no change to Zeg.
+
+| Recipe | What it does | Section |
+| --- | --- | --- |
+| Tracing | Each dispatch becomes a span in Workers tracing. A nested dispatch becomes a span inside the span of its caller. | 3.12 |
+| Background commands | A command class with `static background = true` runs in the background. The caller does not wait for its handler. | 3.13 |
+| Test of a nested dispatch | A test records each dispatch and skips the commands that it names. | 7.6 |
+
+The example Worker uses the tracing recipe and the background recipe.
+
 ## Rules
 
 Rules for the files:
